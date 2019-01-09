@@ -48,7 +48,7 @@ class Model():
         B = tf.shape(self.input_src)[0] #batch size
         Ss = tf.shape(self.input_src)[1] #seq_length
         Vs = self.config.voc_src.length #src vocab
-        Es = self.config.emb_src.dim #src embedding size
+        Es = self.config.net_wrd_len #src embedding size
         Hs = self.config.net_blstm_lens #src lstm sizes
         Hs = np.divide(Hs,2) ### half cells for each direction
 
@@ -92,10 +92,10 @@ class Model():
         B = tf.shape(self.input_tgt)[0] #batch size
         St = tf.shape(self.input_tgt)[1] #seq_length
         Vt = self.config.voc_tgt.length #tgt vocab
-        Et = self.config.emb_tgt.dim #tgt embedding size
+        Et = self.config.net_wrd_len #tgt embedding size
         Ht = self.config.net_lstm_len #tgt lstm size
         Vl = self.config.voc_lid.length #lid vocab
-        El = self.config.emb_lid.dim #lid embedding size
+        El = self.config.net_lid_len #lid embedding size
 
         with tf.variable_scope("embed_snt2lstm_initial",reuse=tf.AUTO_REUSE):
             initial_state_h = tf.layers.dense(self.embed_snt, Ht, use_bias=False)
