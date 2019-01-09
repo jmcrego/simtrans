@@ -40,7 +40,7 @@ class Embeddings():
 class Vocab():
 
     def __init__(self, dict_file, extra_tokens = False):
-        self.extra_tokens = extra_tokens
+        self.extra_tokens = extra_tokens #<unk> <pad> <eos> <bos>
         self.tok_to_idx = {}
         self.idx_to_tok = []
         if self.extra_tokens:
