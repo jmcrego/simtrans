@@ -302,7 +302,7 @@ class Config():
                 if os.path.exists(self.mdir+"/epoch{}.index".format(e)): 
                     self.last_epoch = e
                     break
-            print("learning continuation: last epoch is {}".format(self.last_epoch))
+            sys.stderr.write("learning continuation: last epoch is {}\n".format(self.last_epoch))
         ###
         ### learning from scratch
         ###
@@ -353,7 +353,7 @@ class Config():
                             f.write("{} {}\n".format(opt,sval))
                     else:
                         f.write("{} {}\n".format(opt,val))
-            print("learning from scratch")
+            sys.stderr.write("learning from scratch\n")
         return  
 
     def write_config(self):

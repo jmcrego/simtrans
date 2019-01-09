@@ -5,7 +5,7 @@ import six
 
 def build_tokenizer(args):
     """Builds a tokenizer based on user arguments."""
-    print('args = {}'.format(args))
+    sys.stderr.write('tokenizer args = {}\n'.format(args))
     import pyonmttok
     local_args = {}
     for k, v in six.iteritems(args):
