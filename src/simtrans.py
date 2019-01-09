@@ -18,6 +18,7 @@ def main():
         trn = Dataset(config.src_trn,config.tgt_trn,config.lid_trn, config, do_shuffle=True)
         val = Dataset(config.src_val,config.tgt_val,config.lid_val, config, do_shuffle=False)
         model.learn(trn, val, config.n_epochs)
+
     elif config.src_tst and config.tgt_tst:
         tst = Dataset(config.src_tst,config.tgt_tst,None, config, do_shuffle=False)
         model.inference(tst)
