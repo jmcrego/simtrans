@@ -137,7 +137,7 @@ class Model():
         Vt = self.config.voc_tgt.length #tgt vocab
 
         with tf.name_scope("loss"):
-            xentropy = tf.nn.softmax_cross_entropy_with_logits_v2(labels=tf.one_hot(self.input_ref, depth=Vt, dtype=tf.float32), logits=self.out_logits) #[B, S]
+            xentropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(self.input_ref, depth=Vt, dtype=tf.float32), logits=self.out_logits) #[B, S]
             mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]            
             self.loss = tf.reduce_sum(xentropy*mask) / tf.to_float(tf.reduce_sum(self.len_tgt))
 
