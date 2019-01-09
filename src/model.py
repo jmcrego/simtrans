@@ -49,8 +49,7 @@ class Model():
         Ss = tf.shape(self.input_src)[1] #seq_length
         Vs = self.config.voc_src.length #src vocab
         Es = self.config.net_wrd_len #src embedding size
-        Hs = self.config.net_blstm_lens #src lstm sizes
-        Hs = np.divide(Hs,2) ### half cells for each direction
+        Hs = np.divide(self.config.net_blstm_lens, 2) #src lstm sizes (half cells for each direction)
 
         with tf.device('/cpu:0'), tf.variable_scope("embedding_src",reuse=tf.AUTO_REUSE):
             self.LT_src = tf.get_variable(initializer = self.embedding_initialize(Vs, Es, self.config.emb_src), dtype=tf.float32, name="embeddings_src")
