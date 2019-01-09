@@ -124,7 +124,7 @@ class Config():
         if not self.mdir:
             sys.stderr.write("error: Missing -mdir option\n{}".format(self.usage))
             sys.exit()
-        if self.src_tst and self.tgt_tst: self.inference()
+        if self.src_tst: self.inference()
         elif self.src_trn and self.tgt_trn and self.src_val and self.tgt_val: self.learn()
         return
 
@@ -180,17 +180,15 @@ class Config():
                 sys.exit()
 
     def inference(self):
-        self.dropout = 0.0
-        self.seq_size = 0
         if not self.epoch:
             sys.stderr.write("error: Missing -epoch option\n{}".format(self.usage))
             sys.exit()
         if not os.path.exists(self.src_tst):
             sys.stderr.write('error: -src_tst file {} cannot be find\n{}'.format(self.src_tst,self.usage))
             sys.exit()
-        if not os.path.exists(self.tgt_tst):
-            sys.stderr.write('error: -tgt_tst file {} cannot be find\n{}'.format(self.tgt_tst,self.usage))
-            sys.exit()
+#        if not os.path.exists(self.tgt_tst):
+#            sys.stderr.write('error: -tgt_tst file {} cannot be find\n{}'.format(self.tgt_tst,self.usage))
+#            sys.exit()
         if not os.path.exists(self.mdir + '/epoch' + self.epoch + '.index'):
             sys.stderr.write('error: -epoch file {} cannot be find\n{}'.format(self.mdir + '/epoch' + self.epoch + '.index',self.usage))
             sys.exit()
@@ -210,6 +208,8 @@ class Config():
                 argv.append('-'+opt)
                 argv.append(val)
         self.parse(argv) ### this overrides options passed in command line
+        self.dropout = 0.0
+        self.seq_size = 0
 
         ### read vocabularies
         self.voc_src = Vocab(self.mdir + "/vocab_src", True)
