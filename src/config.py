@@ -37,8 +37,8 @@ class Config():
 
    Network:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
-   -net_conv_lens  STRING : kernel sizes of src convolutional layers []
-   -net_blstm_lens STRING : units of each src bi-lstm layer (separated by -) [1024-1024-1024] (3 layers with 512 cells for each direction)
+   -net_conv_lens  STRING : kernel sizes of src convolutional layers [0] (not used)
+   -net_blstm_lens STRING : units of src bi-lstm layers (separated by -) [1024-1024-1024] (3 layers with 512 cells for each direction)
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
    -net_lid_len       INT : tgt lid embedding size [32]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
@@ -94,8 +94,8 @@ class Config():
         self.tok_tgt = None
         #network
         self.net_wrd_len = 320
-        self.net_conv_lens = []
-        self.net_blstm_lens = [1024,1024,1024]
+        self.net_conv_lens = [0]
+        self.net_blstm_lens = [1024, 1024, 1024]
         self.net_sentence = 'max'
         self.net_lid_len = 32
         self.net_lstm_len = 2048

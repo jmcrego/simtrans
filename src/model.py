@@ -9,6 +9,13 @@ from random import randint
 from config import Config
 from dataset import minibatches
 
+def GetHumanReadable(size,precision=2):
+    suffixes=['B','KB','MB','GB','TB']
+    suffixIndex = 0
+    while size > 1024 and suffixIndex < 4:
+        suffixIndex += 1 #increment the index of the suffix
+        size = size/1024.0 #apply the division
+    return "%.*f%s"%(precision,size,suffixes[suffixIndex])
 
 class Model():
     def __init__(self, config):
@@ -52,7 +59,7 @@ class Model():
 
         self.out_src = self.embed_src
         #if not bi-lstm layers are used sentence_src is computed using either: max, mean (not last)
-        if len(Hs):
+        if len(Hs)>0 and Hs[0]>0:
             for l in range(len(Hs)):
                 with tf.variable_scope("blstm_src_{}".format(l),reuse=tf.AUTO_REUSE):
                     cell_fw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
@@ -78,7 +85,7 @@ class Model():
                 sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
                 sys.exit()
 
-        sys.stderr.write("Total Enc parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
+        #sys.stderr.write("Total Enc parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 
     def add_decoder(self):
         K = 1.0-self.config.dropout # keep probability for embeddings dropout Ex: 0.7
@@ -121,7 +128,11 @@ class Model():
             self.out_logits = tf.layers.dense(self.out_tgt, Vt)
             self.out_pred = tf.argmax(self.out_logits, 2)
 
-        sys.stderr.write("Total Enc/Dec parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
+        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
+        sys.stderr.write("Total Enc/Dec parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
+        for var in tf.trainable_variables(): 
+            pars = var.get_shape().num_elements()
+            sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
 
     def add_loss(self):
         Vt = self.config.voc_tgt.length #tgt vocab
@@ -147,10 +158,6 @@ class Model():
             self.train_op = optimizer.apply_gradients(zip(grads, tvars))
         else:
             self.train_op = optimizer.minimize(self.loss)
-
-        sys.stderr.write("Total parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
-        for variable in tf.trainable_variables():
-            sys.stderr.write("var {} params={}\n".format(variable,variable.get_shape().num_elements()))
 
     def build_graph(self):
         self.add_placeholders()

@@ -1,6 +1,7 @@
 """Tokenization utilities."""
 
 import os
+import sys
 import six
 
 def build_tokenizer(args):
