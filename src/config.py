@@ -38,7 +38,7 @@ class Config():
    Network:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
    -net_conv_lens  STRING : kernel sizes of src convolutional layers [0] (not used)
-   -net_blstm_lens STRING : units of src bi-lstm layers (separated by -) [1024-1024-1024] (3 layers with 512 cells for each direction)
+   -net_blstm_lens STRING : units of src bi-lstm layers [1024-1024-1024] (3 layers with 512 cells for each direction)
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
    -net_lid_len       INT : tgt lid embedding size [32]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
@@ -84,14 +84,14 @@ class Config():
         self.src_tok = None
         self.tgt_tok = None
         #will be created
-        self.voc_src = None
-        self.voc_tgt = None
-        self.voc_lid = None
-        self.emb_src = None
-        self.emb_tgt = None
-        self.emb_lid = None
-        self.tok_src = None
-        self.tok_tgt = None
+        self.voc_src = None #vocabulary
+        self.voc_tgt = None #vocabulary
+        self.voc_lid = None #vocabulary
+        self.emb_src = None #embedding
+        self.emb_tgt = None #embedding
+        self.emb_lid = None #embedding
+        self.tok_src = None #onmt tokenizer
+        self.tok_tgt = None #onmt tokenizer
         #network
         self.net_wrd_len = 320
         self.net_conv_lens = [0]
@@ -124,6 +124,7 @@ class Config():
         if not self.mdir:
             sys.stderr.write("error: Missing -mdir option\n{}".format(self.usage))
             sys.exit()
+        if len(self.mdir)>1 and self.mdir[-1]=="/": self.mdir = self.mdir[0:-1] ### delete ending '/'
         if self.src_tst: self.inference()
         elif self.src_trn and self.tgt_trn and self.src_val and self.tgt_val: self.learn()
         return
