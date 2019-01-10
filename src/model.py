@@ -283,31 +283,30 @@ class Model():
         nbatches = (len(tst) + self.config.batch_size - 1) // self.config.batch_size
 
         for iter, (src_batch, tgt_batch, ref_batch, lid_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
+            # if only src-side tgt_batch is [[]]
+            if len(tgt_batch[0]): bitext = True
+            else: bitext = False
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
-            if len(tgt_batch[0]):
+            if bitext:
                 fd = self.get_feed_dict(tgt_batch, len_tgt_batch)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             for i_sent in range(len(embed_snt_src_batch)):
                 result = []
                 if self.config.show_sim:
-                    if len(tgt_batch[0]): 
-                        result.append("{:.6f}".format(self.compute_sim(embed_snt_src_batch[i_sent], embed_snt_tgt_batch[i_sent])))
+                    if bitext: result.append("{:.6f}".format(self.compute_sim(embed_snt_src_batch[i_sent], embed_snt_tgt_batch[i_sent])))
                 if self.config.show_oov:
                     result.append("{}".format(nsrc_unk_batch[i_sent]))
-                    if len(tgt_batch):
-                        result.append("{}".format(ntgt_unk_batch[i_sent]))
+                    if bitext: result.append("{}".format(ntgt_unk_batch[i_sent]))
                 if self.config.show_emb: 
                     result.append(" ".join(["{:.6f}".format(e) for e in embed_snt_src_batch[i_sent]]))
-                    if len(tgt_batch[0]):
-                        result.append(" ".join(["{:.6f}".format(e) for e in embed_snt_tgt_batch[i_sent]]))
+                    if bitext: result.append(" ".join(["{:.6f}".format(e) for e in embed_snt_tgt_batch[i_sent]]))
                 if self.config.show_snt: 
                     result.append(" ".join(raw_src_batch[i_sent]))
-                    if len(tgt_batch[0]):
-                        result.append(" ".join(raw_tgt_batch[i_sent]))
+                    if bitext: result.append(" ".join(raw_tgt_batch[i_sent]))
 
                 print "\t".join(result)
 
