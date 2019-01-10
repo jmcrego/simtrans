@@ -295,7 +295,7 @@ class Model():
                 result = []
                 if self.config.show_sim:
                     if len(tgt_batch[0]): 
-                        result.append("{:.6f}".format(self.compute_sim(embed_snt_src_batch, embed_snt_tgt_batch)))
+                        result.append("{:.6f}".format(self.compute_sim(embed_snt_src_batch[i_sent], embed_snt_tgt_batch[i_sent])))
                 if self.config.show_oov:
                     result.append("{}".format(nsrc_unk_batch[i_sent]))
                     if len(tgt_batch):
