@@ -282,6 +282,7 @@ class Model():
 
         nbatches = (len(tst) + self.config.batch_size - 1) // self.config.batch_size
 
+        ini_time = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, lid_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
             # if only src-side tgt_batch is [[]]
             if len(tgt_batch[0]): bitext = True
@@ -309,6 +310,9 @@ class Model():
                     if bitext: result.append(" ".join(raw_tgt_batch[i_sent]))
 
                 print "\t".join(result)
+
+        end_time = time.time()
+        sys.stderr.write("{:.2f} seconds {} words".format(end_time - ini_time, tst.nsrc))
 
     def compute_sim(self, src, tgt):
         sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
