@@ -312,7 +312,7 @@ class Model():
                 print "\t".join(result)
 
         end_time = time.time()
-        sys.stderr.write("Computed similarity for {} sentences with {} src tokens in {:.2f} seconds\n".format(len(tst), tst.nsrc, end_time - ini_time))
+        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds\n".format(len(tst), tst.nsrc, end_time - ini_time))
 
     def compute_sim(self, src, tgt):
         sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
