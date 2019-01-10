@@ -69,6 +69,7 @@ class Model():
             self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B, S, L*2]
             self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1) #[B, L*2] (i take [1] since last_state is a tuple with (c,h))
 
+        self.config.net_sentence = 'max'
         with tf.variable_scope("sentence_src"):
             if self.config.net_sentence == 'last':
                 self.embed_snt = self.last_src
