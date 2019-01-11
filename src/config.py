@@ -21,26 +21,22 @@ class Config():
 
  [LEARNING OPTIONS]
 *  -src_trn          FILE : src training data
-*  -tgt_trn          FILE : tgt training data
-*  -lid_trn          FILE : lid training data
+*  -tgt_trn          FILE : tgt training data (must contain LangID as first token)
 
 *  -src_val          FILE : src validation data
-*  -tgt_val          FILE : tgt validation data
-*  -lid_val          FILE : lid validation data
+*  -tgt_val          FILE : tgt validation data (must contain LangID as first token)
 
    -src_voc          FILE : src vocab (needed to initialize learning)
    -tgt_voc          FILE : tgt vocab (needed to initialize learning)
-   -lid_voc          FILE : lid vocab (needed to initialize learning)
 
    -src_tok          FILE : src json tokenization options for onmt tokenization
    -tgt_tok          FILE : tgt json tokenization options for onmt tokenization
 
-   Network:
+   Network topology:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
    -net_conv_lens  STRING : kernel sizes of src convolutional layers [0] (not used)
    -net_blstm_lens STRING : units of src bi-lstm layers [1024-1024-1024] (3 layers with 512 cells for each direction)
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
-   -net_lid_len       INT : tgt lid embedding size [32]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
    -net_opt        STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
 
@@ -74,22 +70,17 @@ class Config():
         #files
         self.src_trn = None
         self.tgt_trn = None
-        self.lid_trn = None
         self.src_val = None
         self.tgt_val = None
-        self.lid_val = None
         self.src_voc = None
         self.tgt_voc = None
-        self.lid_voc = None
         self.src_tok = None
         self.tgt_tok = None
         #will be created
         self.voc_src = None #vocabulary
         self.voc_tgt = None #vocabulary
-        self.voc_lid = None #vocabulary
         self.emb_src = None #embedding
         self.emb_tgt = None #embedding
-        self.emb_lid = None #embedding
         self.tok_src = None #onmt tokenizer
         self.tok_tgt = None #onmt tokenizer
         #network
@@ -97,7 +88,6 @@ class Config():
         self.net_conv_lens = [0]
         self.net_blstm_lens = [1024, 1024, 1024]
         self.net_sentence = 'max'
-        self.net_lid_len = 32
         self.net_lstm_len = 2048
         self.net_opt = 'adam'
         #optimization
@@ -139,13 +129,10 @@ class Config():
             #files
             elif (tok=="-src_trn" and len(argv)):        self.src_trn = argv.pop(0)
             elif (tok=="-tgt_trn" and len(argv)):        self.tgt_trn = argv.pop(0)
-            elif (tok=="-lid_trn" and len(argv)):        self.lid_trn = argv.pop(0)
             elif (tok=="-src_val" and len(argv)):        self.src_val = argv.pop(0)
             elif (tok=="-tgt_val" and len(argv)):        self.tgt_val = argv.pop(0)
-            elif (tok=="-lid_val" and len(argv)):        self.lid_val = argv.pop(0)
             elif (tok=="-src_voc" and len(argv)):        self.src_voc = argv.pop(0)
             elif (tok=="-tgt_voc" and len(argv)):        self.tgt_voc = argv.pop(0)
-            elif (tok=="-lid_voc" and len(argv)):        self.lid_voc = argv.pop(0)
             elif (tok=="-src_tok" and len(argv)):        self.src_tok = argv.pop(0)
             elif (tok=="-tgt_tok" and len(argv)):        self.tgt_tok = argv.pop(0)
             #network
@@ -153,7 +140,6 @@ class Config():
             elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split('-'))
             elif (tok=="-net_conv_lens" and len(argv)):  self.net_conv_lens = map(int, argv.pop(0).split('-'))
             elif (tok=="-net_sentence" and len(argv)):   self.net_sentence = argv.pop(0)
-            elif (tok=="-net_lid_len" and len(argv)):    self.net_lid_len = int(argv.pop(0))
             elif (tok=="-net_lstm_len" and len(argv)):   self.net_lstm_len = int(argv.pop(0))
             elif (tok=="-net_opt" and len(argv)):        self.net_opt = argv.pop(0)
             #optimization
@@ -213,8 +199,8 @@ class Config():
         self.seq_size = 0
 
         ### read vocabularies
-        self.voc_src = Vocab(self.mdir + "/vocab_src", True)
-        self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", True)
+        self.voc_src = Vocab(self.mdir + "/vocab_src")
+        self.voc_tgt = Vocab(self.mdir + "/vocab_tgt")
         if os.path.exists(self.mdir + '/token_src'): 
             self.src_tok = self.mdir + '/token_src'
             with open(self.mdir + '/token_src') as jsonfile: 
@@ -238,17 +224,11 @@ class Config():
         if not os.path.exists(self.tgt_trn):
             sys.stderr.write('error: -tgt_trn file {} cannot be find\n{}'.format(self.tgt_trn,self.usage))
             sys.exit()
-        if not os.path.exists(self.lid_trn):
-            sys.stderr.write('error: -lid_trn file {} cannot be find\n{}'.format(self.lid_trn,self.usage))
-            sys.exit()
         if not os.path.exists(self.src_val):
             sys.stderr.write('error: -src_val file {} cannot be find\n{}'.format(self.src_val,self.usage))
             sys.exit()
         if not os.path.exists(self.tgt_val):
             sys.stderr.write('error: -tgt_val file {} cannot be find\n{}'.format(self.tgt_val,self.usage))
-            sys.exit()
-        if not os.path.exists(self.lid_val):
-            sys.stderr.write('error: -lid_val file {} cannot be find\n{}'.format(self.lid_val,self.usage))
             sys.exit()
         ###
         ### continuation
@@ -263,9 +243,6 @@ class Config():
             if not os.path.exists(self.mdir + '/vocab_tgt'): 
                 sys.stderr.write('error: vocab_tgt file: {} cannot be find\n{}'.format(self.mdir + '/vocab_tgt',self.usage))
                 sys.exit()
-            if not os.path.exists(self.mdir + '/vocab_lid'): 
-                sys.stderr.write('error: vocab_lid file: {} cannot be find\n{}'.format(self.mdir + '/vocab_lid',self.usage))
-                sys.exit()
             if not os.path.exists(self.mdir + '/checkpoint'): 
                 sys.stderr.write('error: checkpoint file: {} cannot be find\ndelete dir {} ???\n{}'.format(self.mdir + '/checkpoint', self.mdir,self.usage))
                 sys.exit()
@@ -279,9 +256,8 @@ class Config():
             self.parse(argv) ### this overrides options passed in command line
 
             ### read vocabularies
-            self.voc_src = Vocab(self.mdir + "/vocab_src", True) 
-            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", True)
-            self.voc_lid = Vocab(self.mdir + "/vocab_lid", False)
+            self.voc_src = Vocab(self.mdir + "/vocab_src") 
+            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt")
 
             ### use existing tokenizers if exist
             if os.path.exists(self.mdir + '/token_src'): 
@@ -314,15 +290,13 @@ class Config():
             #copy vocabularies
             copyfile(self.src_voc, self.mdir + "/vocab_src")
             copyfile(self.tgt_voc, self.mdir + "/vocab_tgt")
-            copyfile(self.lid_voc, self.mdir + "/vocab_lid")
             #copy tokenizers if exist
             if self.src_tok: copyfile(self.src_tok, self.mdir + "/token_src")
             if self.tgt_tok: copyfile(self.tgt_tok, self.mdir + "/token_tgt")
 
             ### read vocabularies
-            self.voc_src = Vocab(self.mdir + "/vocab_src", True) 
-            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", True)
-            self.voc_lid = Vocab(self.mdir + "/vocab_lid", False)
+            self.voc_src = Vocab(self.mdir + "/vocab_src") 
+            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt")
 
             ### use existing tokenizers if exist
             if os.path.exists(self.mdir + '/token_src'): 
@@ -342,7 +316,6 @@ class Config():
             #create embeddings
             self.emb_src = Embeddings(self.voc_src,self.net_wrd_len)
             self.emb_tgt = Embeddings(self.voc_tgt,self.net_wrd_len)
-            self.emb_lid = Embeddings(self.voc_lid,self.net_lid_len)
 
             #write topology file
             with open(self.mdir + "/topology", 'w') as f: 

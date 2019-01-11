@@ -14,9 +14,9 @@ def main():
     model.build_graph()
     model.initialize_session()
 
-    if config.src_trn and config.tgt_trn and config.lid_trn and config.src_val and config.tgt_val and config.lid_val:
-        trn = Dataset(config.src_trn,config.tgt_trn,config.lid_trn, config, do_shuffle=True)
-        val = Dataset(config.src_val,config.tgt_val,config.lid_val, config, do_shuffle=False)
+    if config.src_trn and config.tgt_trn and config.src_val and config.tgt_val:
+        trn = Dataset(config.src_trn,config.tgt_trn, config, do_shuffle=True)
+        val = Dataset(config.src_val,config.tgt_val, config, do_shuffle=False)
         model.learn(trn, val, config.n_epochs)
 
     elif config.src_tst:

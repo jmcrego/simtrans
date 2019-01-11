@@ -38,7 +38,6 @@ class Model():
         self.input_src     = tf.placeholder(tf.int32, shape=[None,None], name="input_src")  # Shape: batch_size x |Fj| (sequence length)
         self.input_tgt     = tf.placeholder(tf.int32, shape=[None,None], name="input_tgt")  # Shape: batch_size x |Ei| (sequence length)
         self.input_ref     = tf.placeholder(tf.int32, shape=[None,None], name="input_ref")  # Shape: batch_size x |Ei| (sequence length)
-        self.input_lid     = tf.placeholder(tf.int32, shape=[None,None], name="input_lid")
         self.len_src       = tf.placeholder(tf.int32, shape=[None],      name="len_src")
         self.len_tgt       = tf.placeholder(tf.int32, shape=[None],      name="len_tgt")
         self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
@@ -71,15 +70,15 @@ class Model():
 
         with tf.variable_scope("sentence_src"):
             if self.config.net_sentence == 'last':
-                self.embed_snt = self.last_src
+                self.embed_snt = self.last_src #[B, Hs*2]
             elif self.config.net_sentence == 'max':
                 mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
                 self.embed_snt = self.out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
-                self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B, L]
+                self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B, Hs*2]
             elif self.config.net_sentence == 'mean':
                 mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, S] => [B, S, 1]
                 self.embed_snt = self.out_src * mask #masked tokens contain 0.0
-                self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B, L*2]
+                self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B, Hs*2]
             else:
                 sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
                 sys.exit()
@@ -93,34 +92,26 @@ class Model():
         Vt = self.config.voc_tgt.length #tgt vocab
         Et = self.config.net_wrd_len #tgt embedding size
         Ht = self.config.net_lstm_len #tgt lstm size
-        Vl = self.config.voc_lid.length #lid vocab
-        El = self.config.net_lid_len #lid embedding size
 
         with tf.variable_scope("embed_snt2lstm_initial",reuse=tf.AUTO_REUSE):
-            initial_state_h = tf.layers.dense(self.embed_snt, Ht, use_bias=False)
+            initial_state_h = tf.layers.dense(self.embed_snt, Ht, use_bias=False) # Hs*2 => Ht
             initial_state_c = tf.zeros(tf.shape(initial_state_h))
             self.initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
 
         with tf.device('/cpu:0'), tf.variable_scope("embedding_tgt"):
             self.LT_tgt = tf.get_variable(initializer = self.embedding_initialize(Vt, Et, self.config.emb_tgt), dtype=tf.float32, name="embeddings_tgt")
-            self.embed_tgt = tf.nn.embedding_lookup(self.LT_tgt, self.input_tgt, name="embed_tgt") #[B, S, E]
+            self.embed_tgt = tf.nn.embedding_lookup(self.LT_tgt, self.input_tgt, name="embed_tgt") #[B, S, Et]
             self.embed_tgt = tf.nn.dropout(self.embed_tgt, keep_prob=K)
 
 
-        with tf.device('/cpu:0'), tf.variable_scope("embedding_lid"):
-            self.LT_lid = tf.get_variable(initializer = self.embedding_initialize(Vl, El, self.config.emb_lid), dtype=tf.float32, name="embeddings_lid")
-            self.embed_lid = tf.nn.embedding_lookup(self.LT_lid, self.input_lid, name="embed_lid") #[B, 1, El]
-            self.embed_lid = tf.nn.dropout(self.embed_lid, keep_prob=K)
-
         #S = tf.shape(self.embed_tgt)[1]
         with tf.variable_scope("lstm_tgt",reuse=tf.AUTO_REUSE):
-            self.embed_snt = tf.expand_dims(self.embed_snt, 1) #[B, 1, L]
-            self.embed_snt_lid = tf.concat([self.embed_snt,self.embed_lid], 2) #[B, 1, L+El]
-            self.embed_snt_lid = tf.tile(self.embed_snt_lid, [1, St, 1]) #[B, S, L+El]
-            self.embed_snt_lid_tgt = tf.concat([self.embed_snt_lid, self.embed_tgt], 2)
+            self.embed_snt = tf.expand_dims(self.embed_snt, 1) #[B, 1, Hs*2]
+            self.embed_snt = tf.tile(self.embed_snt, [1, St, 1]) #[B, St, Hs*2]
+            self.embed_snt_tgt = tf.concat([self.embed_snt, self.embed_tgt], 2) #[B, St, Hs*2+Et]
             cell = tf.contrib.rnn.LSTMCell(Ht)
             self.out_tgt, state_tgt = tf.nn.dynamic_rnn(cell, self.embed_tgt, initial_state=self.initial_state, sequence_length=self.len_tgt, dtype=tf.float32)
-            ### self.embed_tgt is like: <bos> my sentence <pad> ...
+            ### self.embed_tgt is like: LID my sentence <pad> ... (LID is like a bos that also encodes the language to produce)
             ### self.out_tgt   is like: my sentence <eos> 0.0 ...
 
         with tf.variable_scope("logits",reuse=tf.AUTO_REUSE):
@@ -170,12 +161,11 @@ class Model():
 ### feed_dict #####
 ###################
 
-    def get_feed_dict(self, src, len_src, tgt=[[]], len_tgt=[], ref=[[]], lid=[[]], lr=0.0):
+    def get_feed_dict(self, src, len_src, tgt=[[]], len_tgt=[], ref=[[]], lr=0.0):
         feed = { 
             self.input_src: src,
             self.input_tgt: tgt,
             self.input_ref: ref,
-            self.input_lid: lid,
             self.len_src: len_src,
             self.len_tgt: len_tgt,
             self.lr: lr
@@ -197,22 +187,20 @@ class Model():
         loss_partial = 0.0
         nsteps = 0
         niters = 0
-        for iter, (src_batch, tgt_batch, ref_batch, lid_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
-            fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lid_batch, lr)
+        for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
+            fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lr)
             #print("src_batch {}".format(src_batch))
             #print("tgt_batch {}".format(tgt_batch))
             #print("ref_batch {}".format(ref_batch))
-            #print("lid_batch {}".format(lid_batch))
             #print("len_src_batch {}".format(len_src_batch))
             #print("len_tgt_batch {}".format(len_tgt_batch))
-            #embed_src, out_src, initial_state, embed_snt, embed_tgt, embed_lid, embed_snt_lid_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.initial_state, self.embed_snt, self.embed_tgt, self.embed_lid, self.embed_snt_lid_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
+            #embed_src, out_src, initial_state, embed_snt, embed_tgt, embed_snt_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.initial_state, self.embed_snt, self.embed_tgt, self.embed_snt_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
             #print("shape of embed_src = {}".format(np.array(embed_src).shape))
             #print("shape of out_src = {}".format(np.array(out_src).shape))
             #print("shape of initial_state = {}".format(np.array(initial_state).shape))
             #print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
             #print("shape of embed_tgt = {}".format(np.array(embed_tgt).shape))
-            #print("shape of embed_lid = {}".format(np.array(embed_lid).shape))
-            #print("shape of embed_snt_lid_tgt = {}".format(np.array(embed_snt_lid_tgt).shape))
+            #print("shape of embed_snt_tgt = {}".format(np.array(embed_snt_tgt).shape))
             #print("shape of out_tgt = {}".format(np.array(out_tgt).shape))
             #print("shape of out_logits = {}".format(np.array(out_logits).shape))
             #print("shape of out_pred = {}".format(np.array(out_pred).shape))
@@ -244,8 +232,8 @@ class Model():
             nbatches = (len(dev) + self.config.batch_size - 1) // self.config.batch_size
             loss = 0.0
             niters = 0
-            for iter, (src_batch, tgt_batch, ref_batch, lid_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
-                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lid_batch)
+            for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
+                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
                 loss += self.sess.run(self.loss, feed_dict=fd)
                 niters += 1
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
@@ -283,7 +271,7 @@ class Model():
         nbatches = (len(tst) + self.config.batch_size - 1) // self.config.batch_size
 
         ini_time = time.time()
-        for iter, (src_batch, tgt_batch, ref_batch, lid_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
+        for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
             # if only src-side tgt_batch is [[]]
             if len(tgt_batch[0]): bitext = True
             else: bitext = False
