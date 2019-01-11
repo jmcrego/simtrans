@@ -32,7 +32,7 @@ class Config():
    -src_tok          FILE : src json tokenization options for onmt tokenization
    -tgt_tok          FILE : tgt json tokenization options for onmt tokenization
 
-   -lid_voc        STRING : vocabulary of lid tags (separated by '-') to be included in tgt_voc [LIDisSingleLanguage] (the list cannot be empty. Ex: LIDisEnglish-LIDisFrench)
+   -lid_voc        STRING : vocabulary of lid tags (separated by '-') to be included in tgt_voc (Ex: LIDisEnglish-LIDisFrench-LIDisGerman) [LIDisSingleLanguage]
    -lid_add               : adds the lid tag as initial token in trn/val tgt files (used only when lid_voc contains a single language and is not included in trn/val tgt files)
 
    Network topology:
