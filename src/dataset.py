@@ -39,7 +39,7 @@ class Embeddings():
 
 class Vocab():
 
-    def __init__(self, dict_file):
+    def __init__(self, dict_file, lid_voc=[]):
         self.tok_to_idx = {}
         self.idx_to_tok = []
         self.idx_to_tok.append(str_unk)
@@ -50,6 +50,10 @@ class Vocab():
         self.tok_to_idx[str_bos] = len(self.tok_to_idx) #2
         self.idx_to_tok.append(str_eos)
         self.tok_to_idx[str_eos] = len(self.tok_to_idx) #3
+        for lid in lid_voc:
+            self.idx_to_tok.append(lid)
+            self.tok_to_idx[lid] = len(self.tok_to_idx)
+
         nline = 0
         with io.open(dict_file, 'rb') as f:
             for line in f:
@@ -88,6 +92,7 @@ class Dataset():
     def __init__(self, fsrc, ftgt, config, do_shuffle):
         self.voc_src = config.voc_src 
         self.voc_tgt = config.voc_tgt
+        self.lid_voc = config.lid_voc
         self.fsrc = fsrc
         self.ftgt = ftgt
         self.seq_size = config.seq_size
@@ -157,6 +162,10 @@ class Dataset():
             iref = [] #to convert into: my sentence <eos>
             itgt = [] #to convert into: LID my sentence     (LID works as <bos>)
             if len(tgt)>0:
+                if self.lid_add: 
+                    lid = self.lid_voc[0]
+                    itgt.append(self.voc_tgt.get(lid)) ### the LID token is not yet added (and only one is used)
+                    iref.append(self.voc_tgt.get(lid)) ### will next be removed
                 for t in tgt: 
                     iref.append(self.voc_tgt.get(t))
                     itgt.append(self.voc_tgt.get(t))

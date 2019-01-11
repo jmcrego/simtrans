@@ -21,16 +21,19 @@ class Config():
 
  [LEARNING OPTIONS]
 *  -src_trn          FILE : src training data
-*  -tgt_trn          FILE : tgt training data (must contain LangID as first token)
+*  -tgt_trn          FILE : tgt training data (must contain lid as first token)
 
 *  -src_val          FILE : src validation data
-*  -tgt_val          FILE : tgt validation data (must contain LangID as first token)
+*  -tgt_val          FILE : tgt validation data (must contain lid as first token)
 
    -src_voc          FILE : src vocab (needed to initialize learning)
    -tgt_voc          FILE : tgt vocab (needed to initialize learning)
 
    -src_tok          FILE : src json tokenization options for onmt tokenization
    -tgt_tok          FILE : tgt json tokenization options for onmt tokenization
+
+   -lid_voc        STRING : vocabulary of lid tags (separated by '-') to be included in tgt_voc [LIDisSingleLanguage] (the list cannot be empty. Ex: LIDisEnglish-LIDisFrench)
+   -lid_add               : adds the lid tag as initial token in trn/val tgt files (used only when lid_voc contains a single language and is not included in trn/val tgt files)
 
    Network topology:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
@@ -76,6 +79,8 @@ class Config():
         self.tgt_voc = None
         self.src_tok = None
         self.tgt_tok = None
+        self.lid_voc = ['LIDisSingleLanguage']
+        self.lid_add = False
         #will be created
         self.voc_src = None #vocabulary
         self.voc_tgt = None #vocabulary
@@ -135,6 +140,8 @@ class Config():
             elif (tok=="-tgt_voc" and len(argv)):        self.tgt_voc = argv.pop(0)
             elif (tok=="-src_tok" and len(argv)):        self.src_tok = argv.pop(0)
             elif (tok=="-tgt_tok" and len(argv)):        self.tgt_tok = argv.pop(0)
+            elif (tok=="-lid_voc" and len(argv)):        self.lid_voc = argv.pop(0).split('-')
+            elif (tok=="-lid_add"):                      self.lid_add = True
             #network
             elif (tok=="-net_wrd_len" and len(argv)):    self.net_wrd_len = int(argv.pop(0))
             elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split('-'))
@@ -185,9 +192,9 @@ class Config():
         if not os.path.exists(self.mdir + '/vocab_src'): 
             sys.stderr.write('error: vocab_src file: {} cannot be find\n{}'.format(self.mdir + '/vocab_src',self.usage))
             sys.exit()
-        if not os.path.exists(self.mdir + '/vocab_tgt'): 
-            sys.stderr.write('error: vocab_tgt file: {} cannot be find\n{}'.format(self.mdir + '/vocab_tgt',self.usage))
-            sys.exit()
+#        if not os.path.exists(self.mdir + '/vocab_tgt'): 
+#            sys.stderr.write('error: vocab_tgt file: {} cannot be find\n{}'.format(self.mdir + '/vocab_tgt',self.usage))
+#            sys.exit()
         argv = []
         with open(self.mdir + "/topology", 'r') as f:
             for line in f:
@@ -200,21 +207,23 @@ class Config():
 
         ### read vocabularies
         self.voc_src = Vocab(self.mdir + "/vocab_src")
-        self.voc_tgt = Vocab(self.mdir + "/vocab_tgt")
+        if self.src_tgt is not None:
+            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", self.lid_voc)
+    
         if os.path.exists(self.mdir + '/token_src'): 
             self.src_tok = self.mdir + '/token_src'
             with open(self.mdir + '/token_src') as jsonfile: 
                 tok_src_opt = json.load(jsonfile)
                 tok_src_opt["vocabulary"] = self.mdir + '/vocab_src'
                 self.tok_src = build_tokenizer(tok_src_opt)
-        if os.path.exists(self.mdir + '/token_tgt'): 
-            self.tgt_tok = self.mdir + '/token_tgt'
-            with open(self.mdir + '/token_tgt') as jsonfile: 
-                tok_tgt_opt = json.load(jsonfile)
-                tok_tgt_opt["vocabulary"] =  self.mdir + '/vocab_tgt'
-                self.tok_tgt = build_tokenizer(tok_tgt_opt)
 
-
+        if self.tgt_tok is not None:
+            if os.path.exists(self.mdir + '/token_tgt'): 
+                self.tgt_tok = self.mdir + '/token_tgt'
+                with open(self.mdir + '/token_tgt') as jsonfile: 
+                    tok_tgt_opt = json.load(jsonfile)
+                    tok_tgt_opt["vocabulary"] =  self.mdir + '/vocab_tgt'
+                    self.tok_tgt = build_tokenizer(tok_tgt_opt)
         return  
 
     def learn(self):
@@ -257,7 +266,7 @@ class Config():
 
             ### read vocabularies
             self.voc_src = Vocab(self.mdir + "/vocab_src") 
-            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt")
+            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", self.lid_voc)
 
             ### use existing tokenizers if exist
             if os.path.exists(self.mdir + '/token_src'): 
@@ -296,7 +305,7 @@ class Config():
 
             ### read vocabularies
             self.voc_src = Vocab(self.mdir + "/vocab_src") 
-            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt")
+            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", self.lid_voc)
 
             ### use existing tokenizers if exist
             if os.path.exists(self.mdir + '/token_src'): 
