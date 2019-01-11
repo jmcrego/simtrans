@@ -93,6 +93,7 @@ class Dataset():
         self.voc_src = config.voc_src 
         self.voc_tgt = config.voc_tgt
         self.lid_voc = config.lid_voc
+        self.lid_add = config.lid_add
         self.fsrc = fsrc
         self.ftgt = ftgt
         self.seq_size = config.seq_size
@@ -100,7 +101,7 @@ class Dataset():
         self.do_shuffle = do_shuffle
         self.data = []
         self.length = 0 ### length of the data set to be used (not necessarily the whole set)
-
+        sys.stderr.write('Reading {} {}\n'.format(self.fsrc, self.ftgt))
         ### fsrc
         if self.fsrc.endswith('.gz'): fs = gzip.open(self.fsrc, 'rb')
         else: fs = io.open(self.fsrc, 'rb')
@@ -128,7 +129,7 @@ class Dataset():
         if self.ftgt is not None: ft.close()
 
         if self.max_sents > 0: self.length = min(self.length,self.max_sents)
-        sys.stderr.write('({} {} contain {} examples)\n'.format(self.fsrc, self.ftgt,len(self.data)))
+        sys.stderr.write('(dataset contains {} examples)\n'.format(len(self.data)))
 
     def __len__(self):
         return self.length
