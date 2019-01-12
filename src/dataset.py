@@ -222,6 +222,8 @@ def build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, ma
         ### add to batches
         len_src_batch.append(len(RAW_SRC[i]) + 2) ### added <bos> and <eos>
         len_tgt_batch.append(len(RAW_TGT[i])) ### ref: removed LID added <eos>     tgt: nothing done
+        if self.lid_add: ###the initial LID was not removed as not originally added 
+            len_tgt_batch[-1] += 1
         src_batch.append(src)
         tgt_batch.append(tgt)
         ref_batch.append(ref)
