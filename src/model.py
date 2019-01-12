@@ -302,7 +302,7 @@ class Model():
         end_time = time.time()
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(len(tst), tst.nsrc, end_time - ini_time))
 
-    def ref_as_src(self, ref, len_ref)
+    def ref_as_src(self, ref, len_ref):
         ### add initial <bos> to ref and increase by 1 len_tgt
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
         B, S = np.array(ref).shape
