@@ -164,18 +164,24 @@ class Dataset():
             itgt = [] #to convert into: LID my sentence     (LID works as <bos>)
             if len(tgt)>0:
                 if self.lid_add: 
-                    lid = self.lid_voc[0]
-                    itgt.append(self.voc_tgt.get(lid)) ### the LID token is not yet added (and only one is used)
-                    iref.append(self.voc_tgt.get(lid)) ### will next be removed
+                    str_lid = self.lid_voc[0] #only one LID is used in vocab
+                    idx_lid = self.voc_tgt.get(str_lid)
+                    itgt.insert(0,idx_lid) ### the LID token is not yet added 
+                    iref.insert(0,idx_lid) ### will next be removed
                 for t in tgt: 
-                    iref.append(self.voc_tgt.get(t))
-                    itgt.append(self.voc_tgt.get(t))
+                    idx_t = self.voc_tgt.get(t)
+                    iref.append(idx_t)
+                    itgt.append(idx_t)
                     if itgt[-1] == idx_unk: 
                         ntgt_unk += 1
                         self.nunk_tgt += 1
                     self.ntgt += 1
+                ### so far:
+                # itgt: 'LID my sentence'
+                # iref: 'LID my sentence'
                 iref.pop(0)
-                iref.append(idx_eos) ### ref is: 'my sentence <eos>' (deleted initial LID added final <eos>)
+                iref.append(idx_eos) ### iref: 'my sentence <eos>'
+                #iref and itgt have same length
 
             yield isrc, itgt, iref, src, tgt, nsrc_unk, ntgt_unk
             nsent += 1
@@ -215,7 +221,7 @@ def build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, ma
         while len(ref) < max_tgt: ref.append(idx_pad) #<pad>
         ### add to batches
         len_src_batch.append(len(RAW_SRC[i]) + 2) ### added <bos> and <eos>
-        len_tgt_batch.append(len(RAW_TGT[i])) 
+        len_tgt_batch.append(len(RAW_TGT[i])) ### ref: removed LID added <eos>     tgt: nothing done
         src_batch.append(src)
         tgt_batch.append(tgt)
         ref_batch.append(ref)

@@ -280,7 +280,7 @@ class Model():
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
-                fd = self.get_feed_dict(tgt_batch, len_tgt_batch)
+                fd = self.get_feed_dict(self.ref_as_src(ref_batch, len_tgt_batch))
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             for i_sent in range(len(embed_snt_src_batch)):
@@ -301,6 +301,15 @@ class Model():
 
         end_time = time.time()
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(len(tst), tst.nsrc, end_time - ini_time))
+
+    def ref_as_src(self, ref, len_ref)
+        ### add initial <bos> to ref and increase by 1 len_tgt
+        ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
+        B, S = np.array(ref).shape
+        bos = np.empty(B).fill(self.config.voc_tgt.idx_bos)
+        ref = np.concatenate(bos, ref, axis=1)
+        len_tgt_batch += 1
+        return ref, len_ref
 
     def compute_sim(self, src, tgt):
         sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 

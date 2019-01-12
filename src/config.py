@@ -55,7 +55,7 @@ class Config():
 *  -epoch             INT : epoch to use ([mdir]/epoch[epoch] must exist)
 *  -src_tst          FILE : src testing data
 *  -tgt_tst          FILE : tgt testing data
-   -show_sim              : output similarity score
+   -show_sim              : output similarity score (target sentence is passed through the encoder. Though, ONLY works if src/tgt sides have been seen by the encoder and share the vocabulary)
    -show_oov              : output number of OOVs 
    -show_emb              : output sentence embeddings
    -show_snt              : output original sentences
@@ -208,7 +208,7 @@ class Config():
         ### read vocabularies
         self.voc_src = Vocab(self.mdir + "/vocab_src")
         if self.src_tgt is not None:
-            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", self.lid_voc)
+            self.voc_tgt = Vocab(self.mdir + "/vocab_src") ### both src/tgt sentences are passed through the encoder
     
         if os.path.exists(self.mdir + '/token_src'): 
             self.src_tok = self.mdir + '/token_src'
@@ -218,11 +218,11 @@ class Config():
                 self.tok_src = build_tokenizer(tok_src_opt)
 
         if self.tgt_tok is not None:
-            if os.path.exists(self.mdir + '/token_tgt'): 
-                self.tgt_tok = self.mdir + '/token_tgt'
-                with open(self.mdir + '/token_tgt') as jsonfile: 
+            if os.path.exists(self.mdir + '/token_src'): ### both src/tgt sentences are passed through the encoder
+                self.tgt_tok = self.mdir + '/token_src'
+                with open(self.mdir + '/token_src') as jsonfile: 
                     tok_tgt_opt = json.load(jsonfile)
-                    tok_tgt_opt["vocabulary"] =  self.mdir + '/vocab_tgt'
+                    tok_tgt_opt["vocabulary"] =  self.mdir + '/vocab_src'
                     self.tok_tgt = build_tokenizer(tok_tgt_opt)
         return  
 
