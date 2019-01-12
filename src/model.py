@@ -188,6 +188,7 @@ class Model():
         nsteps = 0
         niters = 0
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
+            assert(np.array(tgt_batch).shape == np.array(ref_batch).shape)
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lr)
             #print("src_batch {}".format(src_batch))
             #print("tgt_batch {}".format(tgt_batch))
