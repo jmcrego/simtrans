@@ -63,7 +63,7 @@ class Vocab():
                 self.tok_to_idx[line] = len(self.tok_to_idx)
 
         self.length = len(self.idx_to_tok)
-        sys.stderr.write('Read vocab ({} entries)\n'.format(self.length))
+        sys.stderr.write('Read vocab ({} entries) {}\n'.format(self.length, dict_file))
 
     def __len__(self):
         return len(self.idx_to_tok)
