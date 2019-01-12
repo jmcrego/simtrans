@@ -159,15 +159,14 @@ class Dataset():
                 self.nsrc += 1
             isrc.append(idx_eos) #added <eos>
 
-            #tgt is 'LID my sentence'
+            
             iref = [] #to convert into: my sentence <eos>
             itgt = [] #to convert into: LID my sentence     (LID works as <bos>)
             if len(tgt)>0:
                 if self.lid_add: 
                     str_lid = self.lid_voc[0] #only one LID is used in vocab
-                    idx_lid = self.voc_tgt.get(str_lid)
-                    itgt.insert(0,idx_lid) ### the LID token is not yet added 
-                    iref.insert(0,idx_lid) ### will next be removed
+                    tgt.insert(0,str_lid)
+                #tgt is 'LID my sentence'
                 for t in tgt: 
                     idx_t = self.voc_tgt.get(t)
                     iref.append(idx_t)
@@ -222,8 +221,6 @@ def build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, ma
         ### add to batches
         len_src_batch.append(len(RAW_SRC[i]) + 2) ### added <bos> and <eos>
         len_tgt_batch.append(len(RAW_TGT[i])) ### ref: removed LID added <eos>     tgt: nothing done
-        if self.lid_add: ###the initial LID was not removed as not originally added 
-            len_tgt_batch[-1] += 1
         src_batch.append(src)
         tgt_batch.append(tgt)
         ref_batch.append(ref)
