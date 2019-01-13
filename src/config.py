@@ -33,7 +33,9 @@ class Config():
    -tgt_tok          FILE : tgt json tokenization options for onmt tokenization
 
    -lid_voc        STRING : vocabulary of lid tags (separated by '-') to be included in tgt_voc (Ex: LIDisEnglish-LIDisFrench-LIDisGerman) [LIDisSingleLanguage]
-   -lid_add               : adds the lid tag as initial token in trn/val tgt files (used only when lid_voc contains a single language and is not included in trn/val tgt files)
+   -lid_add               : adds the lid tag as initial token in trn/val tgt files
+                            used only when lid_voc contains a single language
+                            and the tag is not already included in trn/val tgt files
 
    Network topology:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
@@ -54,7 +56,7 @@ class Config():
  [INFERENCE OPTIONS]
 *  -epoch             INT : epoch to use ([mdir]/epoch[epoch] must exist)
 *  -src_tst          FILE : src testing data
-*  -tgt_tst          FILE : tgt testing data
+   -tgt_tst          FILE : tgt testing data
    -show_sim              : output similarity score (target sentence is passed through the encoder. Though, ONLY works if src/tgt sides have been seen by the encoder and share the vocabulary)
    -show_oov              : output number of OOVs 
    -show_emb              : output sentence embeddings
@@ -207,7 +209,7 @@ class Config():
 
         ### read vocabularies
         self.voc_src = Vocab(self.mdir + "/vocab_src")
-        if self.src_tgt is not None:
+        if self.tgt_tst is not None:
             self.voc_tgt = Vocab(self.mdir + "/vocab_src") ### both src/tgt sentences are passed through the encoder
     
         if os.path.exists(self.mdir + '/token_src'): 
