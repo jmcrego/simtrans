@@ -11,8 +11,8 @@ K = 1
 s = 0.0
 usage = """usage: {} -f FILE [-k INT] [-s FLOAT] [-h] < SENTENCES
    -f    FILE : file with sentences and their corresponding vector representations
-   -c_emb INT : column containing vector representations (starting by 1) [2]
-   -c_txt INT : column containing textual sentences (starting by 1) []
+   -c_emb INT : column containing vector representations (starting by 0) [0]
+   -c_txt INT : column containing textual sentences (starting by 0) []
    -k     INT : show the k nearest sentences [1]
    -s   FLOAT : minimum similarity to consider two sentences near [0.0]
    -h         : this help
@@ -27,9 +27,9 @@ while len(sys.argv):
     elif (tok=="-k" and len(sys.argv)):
         K = int(sys.argv.pop(0))
     elif (tok=="-c_emb" and len(sys.argv)):
-        c_emb = int(sys.argv.pop(0))-1
+        c_emb = int(sys.argv.pop(0))
     elif (tok=="-c_txt" and len(sys.argv)):
-        c_txt = int(sys.argv.pop(0))-1
+        c_txt = int(sys.argv.pop(0))
     elif (tok=="-s" and len(sys.argv)):
         s = float(sys.argv.pop(0))
     elif (tok=="-h"):
@@ -52,10 +52,8 @@ with open(f) as f:
         tok = line.rstrip('\n').split('\t')
         vec = map(float, tok[c_emb].strip().split(' '))
         vec = vec/np.linalg.norm(vec)
-        if c_txt is not None: txt = tok[c_txt]
-        else: txt = str(nline)
         VEC.append(vec)
-        TXT.append(txt)
+        if c_txt is not None: TXT.append(tok[c_txt])
         nline += 1
 
 ### read trn sentences
@@ -64,8 +62,10 @@ for line in sys.stdin:
     tok = line.rstrip('\n').split('\t')
     vec = map(float, tok[c_emb].strip().split(' '))
     vec = vec/np.linalg.norm(vec)
-    if c_txt is not None: txt = tok[c_txt]
-    else: txt = str(nline)
+    if c_txt is not None: 
+        print ("{}\t{}".format(nline, tok[c_txt]))
+    else:
+        print ("{}".format(nline))
 
     ### find proximity to all tst sentences
     res = defaultdict(float)
@@ -74,12 +74,14 @@ for line in sys.stdin:
         res[i] = sim
 
     ### output the tst sentences closest to this trn sentence
-    print ("{}\t{}".format(nline, txt))
     k = 0
     for i in sorted(res, key=res.get, reverse=True):    
         sim = res[i]
         if sim < s: break
-        print("\t{:.4f}\t{}\t{}".format(sim,i,TXT[i]))
+        if c_txt is not None: 
+            print("\t{:.4f}\t{}\t{}".format(sim,i,TXT[i]))
+        else:
+            print("\t{:.4f}\t{}".format(sim,i))
         k += 1
         if k == K: break
 
