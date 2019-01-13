@@ -67,7 +67,6 @@ for line in sys.stdin:
         print ("{}\t{}".format(nline, tok[c_txt]))
     else:
         print ("{}".format(nline))
-    sys.exit()
 
     ### find proximity to all tst sentences
     res = defaultdict(float)
@@ -81,11 +80,12 @@ for line in sys.stdin:
         sim = res[i]
         if sim < s: break
         if c_txt is not None: 
-            print("\t{:.4f}\t{}\t{}".format(sim,i,TXT[i]))
+            print("\t{:.5f}\t{}\t{}".format(sim,i,TXT[i]))
         else:
-            print("\t{:.4f}\t{}".format(sim,i))
+            print("\t{:.5f}\t{}".format(sim,i))
         k += 1
         if k == K: break
+    sys.exit()
 
     nline += 1
 
