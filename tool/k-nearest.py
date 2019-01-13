@@ -62,7 +62,6 @@ for line in sys.stdin:
     tok = line.rstrip('\n').split('\t')
     vec = map(float, tok[c_emb].strip().split(' '))
     vec = vec/np.linalg.norm(vec)
-    print(vec)
     if c_txt is not None: 
         print ("{}\t{}".format(nline, tok[c_txt]))
     else:
