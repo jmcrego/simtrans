@@ -52,6 +52,8 @@ with open(f) as f:
         tok = line.rstrip('\n').split('\t')
         vec = map(float, tok[c_emb].strip().split(' '))
         vec = vec/np.linalg.norm(vec)
+        print(vec)
+        sys.exit()
         VEC.append(vec)
         if c_txt is not None: TXT.append(tok[c_txt])
         nline += 1
