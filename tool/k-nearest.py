@@ -62,10 +62,10 @@ for line in sys.stdin:
     tok = line.rstrip('\n').split('\t')
     vec = map(float, tok[c_emb].strip().split(' '))
     vec = vec/np.linalg.norm(vec)
-    if c_txt is not None: 
-        print ("{}\t{}".format(nline, tok[c_txt]))
-    else:
-        print ("{}".format(nline))
+#    if c_txt is not None: 
+#        print ("{}\t{}".format(nline, tok[c_txt]))
+#    else:
+#        print ("{}".format(nline))
 
     ### find proximity to all tst sentences
     res = defaultdict(float)
@@ -79,9 +79,9 @@ for line in sys.stdin:
         sim = res[i]
         if sim < s: break
         if c_txt is not None: 
-            print("\t{:.5f}\t{}\t{}".format(sim,i,TXT[i]))
+            print("{:.5f}\t{}\t{}\t{}\t{}".format(sim,nline,tok[c_txt],i,TXT[i]))
         else:
-            print("\t{:.5f}\t{}".format(sim,i))
+            print("{:.5f}\t{}\t{}".format(sim,nline,i))
         k += 1
         if k == K: break
     
