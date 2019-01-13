@@ -85,8 +85,7 @@ for line in sys.stdin:
             print("\t{:.5f}\t{}".format(sim,i))
         k += 1
         if k == K: break
-    sys.exit()
-
+    
     nline += 1
 
 
