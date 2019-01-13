@@ -63,11 +63,11 @@ for line in sys.stdin:
     vec = map(float, tok[c_emb].strip().split(' '))
     vec = vec/np.linalg.norm(vec)
     print(vec)
-    sys.exit()
     if c_txt is not None: 
         print ("{}\t{}".format(nline, tok[c_txt]))
     else:
         print ("{}".format(nline))
+    sys.exit()
 
     ### find proximity to all tst sentences
     res = defaultdict(float)
