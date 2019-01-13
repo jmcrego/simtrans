@@ -52,7 +52,7 @@ with open(f) as f:
         tok = line.rstrip('\n').split('\t')
         vec = map(float, tok[c_emb].strip().split(' '))
         vec = vec/np.linalg.norm(vec)
-        if c_txt is not None: txt = tok[c_txt]:
+        if c_txt is not None: txt = tok[c_txt]
         else: txt = str(nline)
         VEC.append(vec)
         TXT.append(txt)
@@ -64,7 +64,7 @@ for line in sys.stdin:
     tok = line.rstrip('\n').split('\t')
     vec = map(float, tok[c_emb].strip().split(' '))
     vec = vec/np.linalg.norm(vec)
-    if c_txt is not None: txt = tok[c_txt]:
+    if c_txt is not None: txt = tok[c_txt]
     else: txt = str(nline)
 
     ### find proximity to all tst sentences
