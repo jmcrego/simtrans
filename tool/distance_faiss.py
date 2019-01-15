@@ -87,6 +87,7 @@ def db_indexs(gpu, emb_db):
     else:
         sys.stderr.write("cpu mode\n")
         index = faiss.IndexFlatIP(emb_db.shape[1])
+    index.add(emb_db)
     return index
 
 #################################
@@ -95,11 +96,9 @@ def db_indexs(gpu, emb_db):
 
 emb_db = read_embeddings(fdb,c)
 emb_query = read_embeddings(fquery,c)
-
 start = time.time()
-index = db_indexs()
-index.add(emb_db)
-distances, index_ = index.search(emb_query, 10) #emb_db.shape[0])
+index = db_indexs(gpu, emb_db)
+distances, index_ = index.search(emb_query, K)
 for i in range(index_.shape[0]):
     for j in range(10):
         print("{:.6f}\t{}\t{}".format(distances[i,j], i, index_[i,j]))
