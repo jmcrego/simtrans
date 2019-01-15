@@ -64,12 +64,12 @@ def read_embeddings(file,c):
             else: sys.stderr.write(".")
         ls = l.strip().split("\t")[c].split()
         emb.append([float(i) for i in ls])
-    tend = time.time()
-    sys.stderr.write("[{} sentences, {:.2f} seconds]".format(len(emb),tend-tini))
+    t2 = time.time()
+    sys.stderr.write("[{} sentences, {:.2f} seconds]".format(len(emb),t2-t1))
     emb = np.array(emb).astype('float32')
     emb = emb/np.sqrt(np.sum(emb*emb,1))[:,None]
-    t2 = time.time()
-    sys.stderr.write("[NORMALIZED {:.2f} seconds]\n".format(t2-t1))
+    t3 = time.time()
+    sys.stderr.write("[NORMALIZED {:.2f} seconds]\n".format(t3-t2))
     return emb
 
 def db_indexs(gpu, emb_db):
