@@ -17,6 +17,20 @@ def GetHumanReadable(size,precision=2):
         size = size/1024.0 #apply the division
     return "%.*f%s"%(precision,size,suffixes[suffixIndex])
 
+class Score():
+    def __init__(self):
+        self.nok = 0
+        self.ntotal = 0
+        self.acc = 0.0
+
+    def add(self,tout,tref,tmask):
+        self.ntotal += np.sum(tmask)
+        masked_equals = np.logical_and(np.equal(tout,tref), tmask)
+        self.nok += np.count_nonzero(masked_equals)
+        if self.ntotal:
+            self.acc = 100.0 * self.nok / self.ntotal
+
+
 class Model():
     def __init__(self, config):
         self.config = config
@@ -41,6 +55,7 @@ class Model():
         self.len_src       = tf.placeholder(tf.int32, shape=[None],      name="len_src")
         self.len_tgt       = tf.placeholder(tf.int32, shape=[None],      name="len_tgt")
         self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
+
 
     def add_encoder(self):
         K = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
@@ -83,7 +98,6 @@ class Model():
                 sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
                 sys.exit()
 
-        #sys.stderr.write("Total Enc parameters: {}\n".format(sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())))
 
     def add_decoder(self):
         K = 1.0-self.config.dropout # keep probability for embeddings dropout Ex: 0.7
@@ -103,8 +117,6 @@ class Model():
             self.embed_tgt = tf.nn.embedding_lookup(self.LT_tgt, self.input_tgt, name="embed_tgt") #[B, S, Et]
             self.embed_tgt = tf.nn.dropout(self.embed_tgt, keep_prob=K)
 
-
-        #S = tf.shape(self.embed_tgt)[1]
         with tf.variable_scope("lstm_tgt",reuse=tf.AUTO_REUSE):
             self.embed_snt = tf.expand_dims(self.embed_snt, 1) #[B, 1, Hs*2]
             self.embed_snt = tf.tile(self.embed_snt, [1, St, 1]) #[B, St, Hs*2]
@@ -124,13 +136,15 @@ class Model():
             pars = var.get_shape().num_elements()
             sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
 
+
     def add_loss(self):
         Vt = self.config.voc_tgt.length #tgt vocab
 
         with tf.name_scope("loss"):
             xentropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(self.input_ref, depth=Vt, dtype=tf.float32), logits=self.out_logits) #[B, S]
-            mask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]            
-            self.loss = tf.reduce_sum(xentropy*mask) / tf.to_float(tf.reduce_sum(self.len_tgt))
+            self.tmask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]            
+            self.loss = tf.reduce_sum(xentropy*self.tmask) / tf.to_float(tf.reduce_sum(self.len_tgt))
+
 
     def add_train(self, lr):
         if   self.config.net_opt == 'adam':     optimizer = tf.train.AdamOptimizer(lr) 
@@ -205,6 +219,7 @@ class Model():
             #print("shape of out_tgt = {}".format(np.array(out_tgt).shape))
             #print("shape of out_logits = {}".format(np.array(out_logits).shape))
             #print("shape of out_pred = {}".format(np.array(out_pred).shape))
+            #print("out_pred = {}".format(out_pred))
             #sys.exit()
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             loss_epoch += loss
@@ -233,12 +248,15 @@ class Model():
             nbatches = (len(dev) + self.config.batch_size - 1) // self.config.batch_size
             loss = 0.0
             niters = 0
+            devscore = Score()
             for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
                 fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
-                loss += self.sess.run(self.loss, feed_dict=fd)
+                l, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
+                loss += l
+                devscore.add(out_pred,ref_batch,tmask)
                 niters += 1
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            sys.stderr.write('{} Epoch {} VALID (loss={:.4f})'.format(curr_time,curr_epoch,loss/niters))
+            sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.4f})'.format(curr_time,curr_epoch,loss/niters,devscore.acc))
             sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc, dev.ntgt, float(100)*dev.nunk_src/dev.nsrc, float(100)*dev.nunk_tgt/dev.ntgt))
             #keep records
             self.config.vloss = loss/niters
