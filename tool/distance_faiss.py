@@ -98,9 +98,10 @@ emb_db = read_embeddings(fdb,c)
 emb_query = read_embeddings(fquery,c)
 start = time.time()
 index = db_indexs(gpu, emb_db)
+
 distances, index_ = index.search(emb_query, K)
 for i in range(index_.shape[0]):
-    for j in range(10):
+    for j in range(K):
         print("{:.6f}\t{}\t{}".format(distances[i,j], i, index_[i,j]))
 end = time.time()
 sys.stderr.write("selecting rate: {:.2f} sentences per second\n".format(index_.shape[0]/(end-start)))
