@@ -116,12 +116,16 @@ class Dataset():
             sline = sline.strip('\n') 
             if config.tok_src: src, _ = config.tok_src.tokenize(str(sline))
             else: src = sline.split(' ')
+            src.insert(0,str_bos)
+            src.append(str_eos)
 
             tgt = []
             if self.ftgt is not None:
                 tline = ft.readline().strip('\n')
                 if config.tok_tgt: tgt, _ = config.tok_tgt.tokenize(str(tline))
                 else: tgt = tline.split(' ')
+                if self.lid_add: tgt.insert(0,self.lid_voc[0])
+                tgt.append(str_eos)
 
             self.data.append([src,tgt])
             self.length += 1
@@ -146,42 +150,38 @@ class Dataset():
         if self.do_shuffle: shuffle(indexs)
         for index in indexs:
             (src, tgt) = self.data[index] 
-            nsrc_unk = 0
-            ntgt_unk = 0
+            ### src is like: <bos> my sentence <eos>
+            ### tgt is like: LID my sentence <eos>    (LID works as bos)
 
+            self.nsrc += len(src) - 2
+            nsrc_unk = 0
             isrc = []
-            isrc.append(idx_bos) #added <bos>
             for s in src: 
                 isrc.append(self.voc_src.get(s))
-                if isrc[-1] == idx_unk: 
-                    nsrc_unk += 1
-                    self.nunk_src += 1
-                self.nsrc += 1
-            isrc.append(idx_eos) #added <eos>
-
+                if isrc[-1] == idx_unk: nsrc_unk += 1
+            self.nunk_src += nsrc_unk
             
-            iref = [] #to convert into: my sentence <eos>
-            itgt = [] #to convert into: LID my sentence     (LID works as <bos>)
+            ntgt_unk = 0
+            iref = [] #must be: my sentence <eos>
+            itgt = [] #must be: LID my sentence
             if len(tgt)>0:
-                if self.lid_add: 
-                    str_lid = self.lid_voc[0] #only one LID is used in vocab
-                    tgt.insert(0,str_lid)
+                self.ntgt += len(tgt) - 2
                 #tgt is 'LID my sentence'
-                for t in tgt: 
+                for i,t in enumerate(tgt): 
                     idx_t = self.voc_tgt.get(t)
-                    iref.append(idx_t)
-                    itgt.append(idx_t)
-                    if itgt[-1] == idx_unk: 
-                        ntgt_unk += 1
-                        self.nunk_tgt += 1
-                    self.ntgt += 1
-                ### so far:
-                # itgt: 'LID my sentence'
-                # iref: 'LID my sentence'
-                iref.pop(0)
-                iref.append(idx_eos) ### iref: 'my sentence <eos>'
+                    if idx_t == idx_unk: ntgt_unk += 1
+                    if i>0: iref.append(idx_t) ### all but the first element
+                    if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
+                self.nunk_tgt += ntgt_unk
                 #iref and itgt have same length
 
+#            print("isrc {}".format(isrc))
+#            print("itgt {}".format(itgt))
+#            print("iref {}".format(iref))
+#            print("src {}".format(src))
+#            print("tgt {}".format(tgt))
+#            print("nsrc_unk {}".format(nsrc_unk))
+#            print("ntgt_unk {}".format(ntgt_unk))
             yield isrc, itgt, iref, src, tgt, nsrc_unk, ntgt_unk
             nsent += 1
             if self.max_sents > 0 and nsent >= self.max_sents: break # already generated max_sents examples
@@ -190,10 +190,6 @@ def minibatches(data, minibatch_size):
     SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK = [], [], [], [], [], [], []
     max_src, max_tgt = 0, 0
     for (src, tgt, ref, raw_src, raw_tgt, nsrc_unk, ntgt_unk) in data:
-        if len(SRC) == minibatch_size:
-            yield build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, max_tgt)
-            SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK = [], [], [], [], [], [], []
-            max_src, max_tgt = 0, 0
         if len(src) > max_src: max_src = len(src)
         if len(tgt) > max_tgt: max_tgt = len(tgt)
         SRC.append(src)
@@ -203,6 +199,10 @@ def minibatches(data, minibatch_size):
         RAW_TGT.append(raw_tgt)
         NSRC_UNK.append(nsrc_unk)
         NTGT_UNK.append(ntgt_unk)
+        if len(SRC) == minibatch_size:
+            yield build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, max_tgt)
+            SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK = [], [], [], [], [], [], []
+            max_src, max_tgt = 0, 0
 
     if len(SRC) != 0:
         yield build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, max_tgt)
@@ -219,8 +219,8 @@ def build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, ma
         while len(tgt) < max_tgt: tgt.append(idx_pad) #<pad>
         while len(ref) < max_tgt: ref.append(idx_pad) #<pad>
         ### add to batches
-        len_src_batch.append(len(RAW_SRC[i]) + 2) ### added <bos> and <eos>
-        len_tgt_batch.append(len(RAW_TGT[i])) ### ref: removed LID added <eos>     tgt: nothing done
+        len_src_batch.append(len(SRC[i])) ### '<bos> my sentence <eos>'
+        len_tgt_batch.append(len(TGT[i])) ### tgt: 'LID my sentence'    same length as ref: 'my sentence <bos>'
         src_batch.append(src)
         tgt_batch.append(tgt)
         ref_batch.append(ref)
@@ -228,6 +228,17 @@ def build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, ma
         raw_tgt_batch.append(RAW_TGT[i])
         nsrc_unk_batch.append(NSRC_UNK[i])
         ntgt_unk_batch.append(NTGT_UNK[i])
+
+#    print("len_src_batch {}".format(len_src_batch))
+#    print("len_tgt_batch {}".format(len_tgt_batch))
+#    print("src_batch {}".format(src_batch))
+#    print("tgt_batch {}".format(tgt_batch))
+#    print("ref_batch {}".format(ref_batch))
+#    print("raw_src_batch {}".format(raw_src_batch))
+#    print("raw_tgt_batch {}".format(raw_tgt_batch))
+#    print("nsrc_unk_batch {}".format(nsrc_unk_batch))
+#    print("ntgt_unk_batch {}".format(ntgt_unk_batch))
+#    sys.exit()
     return src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch
 
 

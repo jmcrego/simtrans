@@ -218,7 +218,7 @@ class Model():
                 nsteps = 0
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write('{} Epoch {} TRAIN lr={:.4f} (loss={:.4f})'.format(curr_time,curr_epoch,lr,loss_epoch/niters))
-        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc,train.ntgt,float(100)*train.nunk_src/train.nsrc,float(100)*train.nunk_tgt/train.ntgt))
+        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, float(100)*train.nunk_src/train.nsrc, float(100)*train.nunk_tgt/train.ntgt))
         #keep records
         self.config.tloss = loss_epoch/niters
         self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
@@ -239,7 +239,7 @@ class Model():
                 niters += 1
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
             sys.stderr.write('{} Epoch {} VALID (loss={:.4f})'.format(curr_time,curr_epoch,loss/niters))
-            sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc,dev.ntgt,float(100) * dev.nunk_src / dev.nsrc,float(100) * dev.nunk_tgt / dev.ntgt))
+            sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc, dev.ntgt, float(100)*dev.nunk_src/dev.nsrc, float(100)*dev.nunk_tgt/dev.ntgt))
             #keep records
             self.config.vloss = loss/niters
 
