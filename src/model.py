@@ -7,7 +7,7 @@ import os
 import time
 from random import randint
 from config import Config
-from dataset import minibatches
+#from dataset import minibatches
 
 def GetHumanReadable(size,precision=2):
     suffixes=['B','KB','MB','GB','TB']
@@ -19,16 +19,24 @@ def GetHumanReadable(size,precision=2):
 
 class Score():
     def __init__(self):
+        #loss
+        self.loss = 0.0
+        self.niter = 0 ### tital iters
+        self.Loss = 0.0
+        #tokens
         self.nok = 0
-        self.ntotal = 0
-        self.acc = 0.0
+        self.ntotal = 0 ### total words
+        self.Acc = 0.0
 
-    def add(self,tout,tref,tmask):
-        self.ntotal += np.sum(tmask)
-        masked_equals = np.logical_and(np.equal(tout,tref), tmask)
-        self.nok += np.count_nonzero(masked_equals)
-        if self.ntotal:
-            self.acc = 100.0 * self.nok / self.ntotal
+    def add(self,tout,tref,tmask,loss):
+        self.niter += 1
+        self.loss += loss
+        self.Loss = self.loss / self.niter
+        if len(tout):
+            self.ntotal += np.sum(tmask)
+            masked_equals = np.logical_and(np.equal(tout,tref), tmask)
+            self.nok += np.count_nonzero(masked_equals)
+            if self.ntotal: self.Acc = 100.0 * self.nok / self.ntotal
 
 
 class Model():
@@ -54,7 +62,7 @@ class Model():
         self.input_ref     = tf.placeholder(tf.int32, shape=[None,None], name="input_ref")  # Shape: batch_size x |Ei| (sequence length)
         self.len_src       = tf.placeholder(tf.int32, shape=[None],      name="len_src")
         self.len_tgt       = tf.placeholder(tf.int32, shape=[None],      name="len_tgt")
-        self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
+#        self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
 
 
     def add_encoder(self):
@@ -146,12 +154,12 @@ class Model():
             self.loss = tf.reduce_sum(xentropy*self.tmask) / tf.to_float(tf.reduce_sum(self.len_tgt))
 
 
-    def add_train(self, lr):
-        if   self.config.net_opt == 'adam':     optimizer = tf.train.AdamOptimizer(lr) 
-        elif self.config.net_opt == 'adagrad':  optimizer = tf.train.AdagradOptimizer(self.lr)
-        elif self.config.net_opt == 'sgd':      optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        elif self.config.net_opt == 'rmsprop':  optimizer = tf.train.RMSPropOptimizer(self.lr)
-        elif self.config.net_opt == 'adadelta': optimizer = tf.train.AdadeltaOptimizer(self.lr)
+    def add_train(self):
+        if   self.config.net_opt == 'adam':     self.optimizer = tf.train.AdamOptimizer() 
+#        elif self.config.net_opt == 'adagrad':  self.optimizer = tf.train.AdagradOptimizer(self.lr)
+#        elif self.config.net_opt == 'sgd':      self.optimizer = tf.train.GradientDescentOptimizer(self.lr)
+#        elif self.config.net_opt == 'rmsprop':  self.optimizer = tf.train.RMSPropOptimizer(self.lr)
+#        elif self.config.net_opt == 'adadelta': self.optimizer = tf.train.AdadeltaOptimizer(self.lr)
         else:
             sys.stderr.write("error: bad -lr_method option '{}'\n".format(self.config.net_opt))
             sys.exit()
@@ -159,9 +167,11 @@ class Model():
         if self.config.clip > 0.0:
             tvars = tf.trainable_variables()
             grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars), self.config.clip)
-            self.train_op = optimizer.apply_gradients(zip(grads, tvars))
+            self.train_op = self.optimizer.apply_gradients(zip(grads, tvars))
         else:
-            self.train_op = optimizer.minimize(self.loss)
+            self.train_op = self.optimizer.minimize(self.loss)
+#        tf.add_to_collection("train_op", self.train_op) ### adds train_op to graph (this way it will be saved)
+
 
     def build_graph(self):
         self.add_placeholders()
@@ -169,7 +179,7 @@ class Model():
         if self.config.src_tst is None: 
             self.add_decoder()
             self.add_loss()
-            self.add_train(self.config.opt_lr)
+            self.add_train()
 
 ###################
 ### feed_dict #####
@@ -182,7 +192,7 @@ class Model():
             self.input_ref: ref,
             self.len_src: len_src,
             self.len_tgt: len_tgt,
-            self.lr: lr
+#            self.lr: lr
         }
         return feed
 
@@ -194,21 +204,16 @@ class Model():
         #######################
         # learn on trainset ###
         #######################
-        nbatches = (len(train) + self.config.batch_size - 1) // self.config.batch_size
+        len_train = train.len
+        if self.config.max_sents: len_train = min(len_train, self.config.max_sents)
+        nbatches = (len_train + self.config.batch_size - 1) // self.config.batch_size
         curr_epoch = self.config.last_epoch + 1
         ini_time = time.time()
-        loss_epoch = 0.0
-        loss_partial = 0.0
-        nsteps = 0
-        niters = 0
-        for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(train, self.config.batch_size)):
+        score = Score()
+        pscore = Score() ### partial
+        for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             assert(np.array(tgt_batch).shape == np.array(ref_batch).shape)
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lr)
-            #print("src_batch {}".format(src_batch))
-            #print("tgt_batch {}".format(tgt_batch))
-            #print("ref_batch {}".format(ref_batch))
-            #print("len_src_batch {}".format(len_src_batch))
-            #print("len_tgt_batch {}".format(len_tgt_batch))
             #embed_src, out_src, initial_state, embed_snt, embed_tgt, embed_snt_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.initial_state, self.embed_snt, self.embed_tgt, self.embed_snt_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
             #print("shape of embed_src = {}".format(np.array(embed_src).shape))
             #print("shape of out_src = {}".format(np.array(out_src).shape))
@@ -218,24 +223,20 @@ class Model():
             #print("shape of embed_snt_tgt = {}".format(np.array(embed_snt_tgt).shape))
             #print("shape of out_tgt = {}".format(np.array(out_tgt).shape))
             #print("shape of out_logits = {}".format(np.array(out_logits).shape))
-            #print("shape of out_pred = {}".format(np.array(out_pred).shape))
-            #print("out_pred = {}".format(out_pred))
+            #print("shape of out_pred = {}\n{}".format(np.array(out_pred).shape, out_pred))
             #sys.exit()
-            _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
-            loss_epoch += loss
-            loss_partial += loss
-            nsteps += 1
-            niters += 1
+            _, loss, curr_lr, curr_b1, curr_b2, curr_e = self.sess.run([self.train_op, self.loss, self.optimizer._lr_t, self.optimizer._beta1_t, self.optimizer._beta2_t, self.optimizer._epsilon_t], feed_dict=fd)
+            score.add([],[],[],loss)
+            pscore.add([],[],[],loss)
             if (iter+1)%self.config.reports == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.4f})\n'.format(curr_time,curr_epoch,iter+1,nbatches,loss_partial/nsteps))
-                loss_partial = 0.0
-                nsteps = 0
+                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.4f}) lr={:.4f} b1={:.4f} b2={:.4f} e={:.4f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,curr_lr, curr_b1, curr_b2, curr_e))
+                pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write('{} Epoch {} TRAIN lr={:.4f} (loss={:.4f})'.format(curr_time,curr_epoch,lr,loss_epoch/niters))
-        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, float(100)*train.nunk_src/train.nsrc, float(100)*train.nunk_tgt/train.ntgt))
+        sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
+        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt))
         #keep records
-        self.config.tloss = loss_epoch/niters
+        self.config.tloss = score.Loss
         self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         self.config.seconds = "{:.2f}".format(time.time() - ini_time)
         self.config.last_epoch += 1
@@ -244,32 +245,28 @@ class Model():
         ##########################
         # evaluate over devset ###
         ##########################
+        score = Score()
         if dev is not None:
-            nbatches = (len(dev) + self.config.batch_size - 1) // self.config.batch_size
-            loss = 0.0
-            niters = 0
-            devscore = Score()
-            for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(dev, self.config.batch_size)):
+            nbatches = (dev.len + self.config.batch_size - 1) // self.config.batch_size
+            for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(dev):
                 fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
-                l, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
-                loss += l
-                devscore.add(out_pred,ref_batch,tmask)
-                niters += 1
+                loss, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
+                score.add(out_pred,ref_batch,tmask,loss)
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.4f})'.format(curr_time,curr_epoch,loss/niters,devscore.acc))
-            sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc, dev.ntgt, float(100)*dev.nunk_src/dev.nsrc, float(100)*dev.nunk_tgt/dev.ntgt))
+            sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.2f})'.format(curr_time,curr_epoch,score.Loss,score.Acc))
+            sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc, dev.ntgt, 100.0*dev.nunk_src/dev.nsrc, 100.0*dev.nunk_tgt/dev.ntgt))
             #keep records
-            self.config.vloss = loss/niters
+            self.config.vloss = score.Loss
 
         self.config.write_config()
-        return loss/niters, curr_epoch
+        return score.Loss, curr_epoch
 
 
     def learn(self, train, dev, n_epochs):
         lr = self.config.opt_lr
         decay = self.config.opt_decay
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write("{} Training with {} sentence pairs: {} batches with up to {} examples each.\n".format(curr_time,len(train),(len(train)+self.config.batch_size-1)//self.config.batch_size,self.config.batch_size))
+        sys.stderr.write("{} Start Training\n".format(curr_time))
         best_score = 0
         best_epoch = 0
         for iter in range(n_epochs):
@@ -280,17 +277,18 @@ class Model():
                 best_epoch = epoch
             else:
                 lr *= decay # decay learning rate
+        curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
+        sys.stderr.write("{} End Training\n".format(curr_time))
 
 ###################
 ### inference #####
 ###################
 
     def inference(self, tst):
-
-        nbatches = (len(tst) + self.config.batch_size - 1) // self.config.batch_size
+        nbatches = (tst.len + self.config.batch_size - 1) // self.config.batch_size
 
         ini_time = time.time()
-        for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(minibatches(tst, self.config.batch_size)):
+        for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
             # if only src-side tgt_batch is [[]]
             if len(tgt_batch[0]): bitext = True
             else: bitext = False

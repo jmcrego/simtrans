@@ -100,7 +100,8 @@ class Dataset():
         self.max_sents = config.max_sents
         self.do_shuffle = do_shuffle
         self.data = []
-        self.length = 0 ### length of the data set to be used (not necessarily the whole set)
+        self.data_batch = []
+#        self.length = 0 ### length of the data set to be used (not necessarily the whole set)
         sys.stderr.write('Reading {} {}\n'.format(self.fsrc, self.ftgt))
         ### fsrc
         if self.fsrc.endswith('.gz'): fs = gzip.open(self.fsrc, 'rb')
@@ -111,6 +112,7 @@ class Dataset():
             if self.ftgt.endswith('.gz'): ft = gzip.open(self.ftgt, 'rb')
             else: ft = io.open(self.ftgt, 'rb')
 
+        ### first loop to read sentences and sort by length
         for sline in fs:
 
             sline = sline.strip('\n') 
@@ -127,31 +129,53 @@ class Dataset():
                 if self.lid_add: tgt.insert(0,self.lid_voc[0])
                 tgt.append(str_eos)
 
-            self.data.append([src,tgt])
-            self.length += 1
+            self.data.append([len(src),src,tgt])
+
         fs.close()
         if self.ftgt is not None: ft.close()
+        self.len = len(self.data)
+        sys.stderr.write('(dataset contains {} examples)\n'.format(self.len))
 
-        if self.max_sents > 0: self.length = min(self.length,self.max_sents)
-        sys.stderr.write('(dataset contains {} examples)\n'.format(len(self.data)))
+        ### sort by source length 
+        if self.do_shuffle: 
+            self.data.sort(key=lambda x: x[0])
 
-    def __len__(self):
-        return self.length
+        ### second loop to build data_batch
+        batch = []
+        for slen, src, tgt in self.data:
+            batch.append([src, tgt])
+            if len(batch)==config.batch_size:
+                self.data_batch.append(batch)
+                batch = []
+        if len(batch): self.data_batch.append(batch)
+        self.data = []
+
+        sys.stderr.write('(dataset contains {} batches with up to {} examples each)\n'.format(len(self.data_batch), config.batch_size))
 
 
     def __iter__(self):
-        nsent = 0
+        self.nsents = 0
+        self.nbatches = 0
         self.nsrc = 0
         self.ntgt = 0
         self.nunk_src = 0
         self.nunk_tgt = 0
         ### every iteration i get shuffled data examples if do_shuffle
-        indexs = [i for i in range(len(self.data))]
+        indexs = [i for i in range(len(self.data_batch))]
         if self.do_shuffle: shuffle(indexs)
         for index in indexs:
-            (src, tgt) = self.data[index] 
-            ### src is like: <bos> my sentence <eos>
-            ### tgt is like: LID my sentence <eos>    (LID works as bos)
+            yield self.minibatch(index)
+            self.nsents += len(self.data_batch[index])
+            self.nbatches += 1
+            if self.max_sents > 0 and self.nsents >= self.max_sents: break # already generated max_sents examples
+
+
+    def minibatch(self, index):
+        SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, LEN_SRC, LEN_TGT = [], [], [], [], [], [], [], [], []
+        max_src, max_tgt = 0, 0
+        for src, tgt in self.data_batch[index]:
+            # src is like: <bos> my sentence <eos>
+            # tgt is like: LID my sentence <eos>    (LID works as bos)
 
             self.nsrc += len(src) - 2
             nsrc_unk = 0
@@ -166,79 +190,46 @@ class Dataset():
             itgt = [] #must be: LID my sentence
             if len(tgt)>0:
                 self.ntgt += len(tgt) - 2
-                #tgt is 'LID my sentence'
                 for i,t in enumerate(tgt): 
                     idx_t = self.voc_tgt.get(t)
                     if idx_t == idx_unk: ntgt_unk += 1
                     if i>0: iref.append(idx_t) ### all but the first element
                     if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
                 self.nunk_tgt += ntgt_unk
-                #iref and itgt have same length
 
-#            print("isrc {}".format(isrc))
-#            print("itgt {}".format(itgt))
-#            print("iref {}".format(iref))
-#            print("src {}".format(src))
-#            print("tgt {}".format(tgt))
-#            print("nsrc_unk {}".format(nsrc_unk))
-#            print("ntgt_unk {}".format(ntgt_unk))
-            yield isrc, itgt, iref, src, tgt, nsrc_unk, ntgt_unk
-            nsent += 1
-            if self.max_sents > 0 and nsent >= self.max_sents: break # already generated max_sents examples
+            #### update data
+            if len(isrc) > max_src: max_src = len(isrc)
+            if len(itgt) > max_tgt: max_tgt = len(itgt)
+            RAW_SRC.append(src)
+            RAW_TGT.append(tgt)
+            SRC.append(isrc)
+            TGT.append(itgt)
+            REF.append(iref)
+            NSRC_UNK.append(nsrc_unk)
+            NTGT_UNK.append(ntgt_unk)
+            LEN_SRC.append(len(isrc)) ### '<bos> my sentence <eos>'
+            LEN_TGT.append(len(itgt)) ### tgt: 'LID my sentence'    same length as ref: 'my sentence <bos>'
 
-def minibatches(data, minibatch_size):
-    SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK = [], [], [], [], [], [], []
-    max_src, max_tgt = 0, 0
-    for (src, tgt, ref, raw_src, raw_tgt, nsrc_unk, ntgt_unk) in data:
-        if len(src) > max_src: max_src = len(src)
-        if len(tgt) > max_tgt: max_tgt = len(tgt)
-        SRC.append(src)
-        TGT.append(tgt)
-        REF.append(ref)
-        RAW_SRC.append(raw_src)
-        RAW_TGT.append(raw_tgt)
-        NSRC_UNK.append(nsrc_unk)
-        NTGT_UNK.append(ntgt_unk)
-        if len(SRC) == minibatch_size:
-            yield build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, max_tgt)
-            SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK = [], [], [], [], [], [], []
-            max_src, max_tgt = 0, 0
+        ### add padding 
+        for i in range(len(SRC)):
+            while len(SRC[i]) < max_src: SRC[i].append(idx_pad) #<pad>
+            while len(TGT[i]) < max_tgt: TGT[i].append(idx_pad) #<pad>
+            while len(REF[i]) < max_tgt: REF[i].append(idx_pad) #<pad>
 
-    if len(SRC) != 0:
-        yield build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, max_tgt)
+        #print("BATCH max_src={} max_tgt={}".format(max_src,max_tgt))
+        #print("LEN_SRC: {}".format(LEN_SRC))
+        #print("LEN_TGT: {}".format(LEN_TGT))
+        #print("NSRC_UNK: {}".format(NSRC_UNK))
+        #print("NTGT_UNK: {}".format(NTGT_UNK))
+        #for i in range(len(SRC)):
+        #    print("EXAMPLE {}/{}".format(i,len(SRC)))
+        #    print("  RAW_SRC: {}".format(" ".join([e for e in RAW_SRC[i]])))
+        #    print("  RAW_TGT: {}".format(" ".join([e for e in RAW_TGT[i]])))
+        #    print("  SRC: {}".format(" ".join([str(e) for e in SRC[i]])))
+        #    print("  TGT: {}".format(" ".join([str(e) for e in TGT[i]])))
+        #    print("  REF: {}".format(" ".join([str(e) for e in REF[i]])))
 
-def build_batch(SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, max_src, max_tgt):
-    src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch = [], [], [], [], [], [], [], [], []
-    ### build: src_batch, pad_src_batch sized of max_src
-    batch_size = len(SRC)
-    for i in range(batch_size):
-        src = list(SRC[i])
-        tgt = list(TGT[i])
-        ref = list(REF[i])
-        while len(src) < max_src: src.append(idx_pad) #<pad>
-        while len(tgt) < max_tgt: tgt.append(idx_pad) #<pad>
-        while len(ref) < max_tgt: ref.append(idx_pad) #<pad>
-        ### add to batches
-        len_src_batch.append(len(SRC[i])) ### '<bos> my sentence <eos>'
-        len_tgt_batch.append(len(TGT[i])) ### tgt: 'LID my sentence'    same length as ref: 'my sentence <bos>'
-        src_batch.append(src)
-        tgt_batch.append(tgt)
-        ref_batch.append(ref)
-        raw_src_batch.append(RAW_SRC[i])
-        raw_tgt_batch.append(RAW_TGT[i])
-        nsrc_unk_batch.append(NSRC_UNK[i])
-        ntgt_unk_batch.append(NTGT_UNK[i])
+        return SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, LEN_SRC, LEN_TGT
 
-#    print("len_src_batch {}".format(len_src_batch))
-#    print("len_tgt_batch {}".format(len_tgt_batch))
-#    print("src_batch {}".format(src_batch))
-#    print("tgt_batch {}".format(tgt_batch))
-#    print("ref_batch {}".format(ref_batch))
-#    print("raw_src_batch {}".format(raw_src_batch))
-#    print("raw_tgt_batch {}".format(raw_tgt_batch))
-#    print("nsrc_unk_batch {}".format(nsrc_unk_batch))
-#    print("ntgt_unk_batch {}".format(ntgt_unk_batch))
-#    sys.exit()
-    return src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch
 
 
