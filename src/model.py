@@ -230,7 +230,7 @@ class Model():
             pscore.add([],[],[],loss)
             if (iter+1)%self.config.reports == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.4f}) lr={:.4f} b1={:.4f} b2={:.4f} e={:.4f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,curr_lr, curr_b1, curr_b2, curr_e))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.4f}) lr={:.6f} b1={:.6f} b2={:.6f} eps={:.6f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,curr_lr, curr_b1, curr_b2, curr_e))
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
