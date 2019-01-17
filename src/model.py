@@ -299,7 +299,8 @@ class Model():
             else: bitext = False
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            embed_snt_src_batch, embed_src_batch, out_src_batch, mask = self.sess.run([self.embed_snt, self.embed_src, self.out_src, self.mask], feed_dict=fd)
+            embed_snt_src_batch, embed_src_batch, out_src_batch, mask, len_src = self.sess.run([self.embed_snt, self.embed_src, self.out_src, self.mask, self.len_src], feed_dict=fd)
+            print("len_src {}".format(len_src))
             print("mask_batch {}".format(np.array(mask).shape))
             print("mask_batch {}".format(mask))
             print("embed_src_batch {}".format(np.array(embed_src_batch).shape))
