@@ -234,7 +234,7 @@ class Model():
                 tnow = time.time()
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
                 sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f} time={:.2f} sec\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr,tnow-tpre))
-                tpre = now
+                tpre = tnow
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
