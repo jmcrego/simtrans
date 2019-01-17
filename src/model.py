@@ -20,23 +20,23 @@ def GetHumanReadable(size,precision=2):
 class Score():
     def __init__(self):
         #loss
-        self.loss = 0.0
-        self.niter = 0 ### tital iters
+        self.sumloss = 0.0
+        self.total_iters = 0
         self.Loss = 0.0
         #tokens
-        self.nok = 0
-        self.ntotal = 0 ### total words
+        self.sumok = 0
+        self.total_words = 0
         self.Acc = 0.0
 
-    def add(self,tout,tref,tmask,loss):
-        self.niter += 1
-        self.loss += loss
-        self.Loss = self.loss / self.niter
+    def add(self,loss,tout,tref,tmask):
+        self.total_iters += 1
+        self.sumloss += loss
+        self.Loss = self.sumloss / self.total_iters
         if len(tout):
-            self.ntotal += np.sum(tmask)
             masked_equals = np.logical_and(np.equal(tout,tref), tmask)
-            self.nok += np.count_nonzero(masked_equals)
-            if self.ntotal: self.Acc = 100.0 * self.nok / self.ntotal
+            self.total_words += np.sum(tmask)
+            self.sumok += np.count_nonzero(masked_equals)
+            self.Acc = 100.0 * self.sumok / self.total_words
 
 
 class Model():
@@ -62,7 +62,7 @@ class Model():
         self.input_ref     = tf.placeholder(tf.int32, shape=[None,None], name="input_ref")  # Shape: batch_size x |Ei| (sequence length)
         self.len_src       = tf.placeholder(tf.int32, shape=[None],      name="len_src")
         self.len_tgt       = tf.placeholder(tf.int32, shape=[None],      name="len_tgt")
-#        self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
+        self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
 
 
     def add_encoder(self):
@@ -156,8 +156,8 @@ class Model():
 
     def add_train(self):
         if   self.config.net_opt == 'adam':     self.optimizer = tf.train.AdamOptimizer() 
+        elif self.config.net_opt == 'sgd':      self.optimizer = tf.train.GradientDescentOptimizer(self.lr)
 #        elif self.config.net_opt == 'adagrad':  self.optimizer = tf.train.AdagradOptimizer(self.lr)
-#        elif self.config.net_opt == 'sgd':      self.optimizer = tf.train.GradientDescentOptimizer(self.lr)
 #        elif self.config.net_opt == 'rmsprop':  self.optimizer = tf.train.RMSPropOptimizer(self.lr)
 #        elif self.config.net_opt == 'adadelta': self.optimizer = tf.train.AdadeltaOptimizer(self.lr)
         else:
@@ -192,7 +192,7 @@ class Model():
             self.input_ref: ref,
             self.len_src: len_src,
             self.len_tgt: len_tgt,
-#            self.lr: lr
+            self.lr: lr
         }
         return feed
 
@@ -210,7 +210,7 @@ class Model():
         curr_epoch = self.config.last_epoch + 1
         ini_time = time.time()
         score = Score()
-        pscore = Score() ### partial
+        pscore = Score() ### partial score
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             assert(np.array(tgt_batch).shape == np.array(ref_batch).shape)
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lr)
@@ -225,12 +225,13 @@ class Model():
             #print("shape of out_logits = {}".format(np.array(out_logits).shape))
             #print("shape of out_pred = {}\n{}".format(np.array(out_pred).shape, out_pred))
             #sys.exit()
-            _, loss, curr_lr, curr_b1, curr_b2, curr_e = self.sess.run([self.train_op, self.loss, self.optimizer._lr_t, self.optimizer._beta1_t, self.optimizer._beta2_t, self.optimizer._epsilon_t], feed_dict=fd)
-            score.add([],[],[],loss)
-            pscore.add([],[],[],loss)
+            if  self.config.net_opt == 'adam': _, loss, used_lr = self.sess.run([self.train_op, self.loss, self.optimizer._lr_t], feed_dict=fd)
+            elif self.config.net_opt == 'sgd': _, loss, used_lr = self.sess.run([self.train_op, self.loss, self.optimizer._learning_rate_tensor], feed_dict=fd)
+            score.add(loss,[],[],[])
+            pscore.add(loss,[],[],[])
             if (iter+1)%self.config.reports == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.4f}) lr={:.6f} b1={:.8f} b2={:.8f} eps={:.8f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,curr_lr, curr_b1, curr_b2, curr_e))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,used_lr))
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
@@ -251,7 +252,7 @@ class Model():
             for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(dev):
                 fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
                 loss, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
-                score.add(out_pred,ref_batch,tmask,loss)
+                score.add(loss,out_pred,ref_batch,tmask)
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
             sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.2f})'.format(curr_time,curr_epoch,score.Loss,score.Acc))
             sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc, dev.ntgt, 100.0*dev.nunk_src/dev.nsrc, 100.0*dev.nunk_tgt/dev.ntgt))
@@ -263,8 +264,7 @@ class Model():
 
 
     def learn(self, train, dev, n_epochs):
-        lr = self.config.opt_lr
-        decay = self.config.opt_decay
+        lr = self.config.opt_lr ### initial lr
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write("{} Start Training\n".format(curr_time))
         best_score = 0
@@ -272,11 +272,11 @@ class Model():
         for iter in range(n_epochs):
             score, epoch = self.run_epoch(train, dev, lr)  ### decay when score does not improve over the best
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            if iter == 0 or score <= best_score: 
+            if iter == 0 or score <= best_score: ### keep lr value
                 best_score = score
                 best_epoch = epoch
-            else:
-                lr *= decay # decay learning rate
+            else: ### decay lr when score does not improves over the best
+                lr *= self.config.opt_decay 
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write("{} End Training\n".format(curr_time))
 
