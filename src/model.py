@@ -64,6 +64,10 @@ class Model():
         self.len_tgt       = tf.placeholder(tf.int32, shape=[None],      name="len_tgt")
         self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
 
+#        with tf.variable_scope("step_and_learning_rate"):
+#            self.global_step = tf.Variable(0, trainable=False)
+#            if self.config.net_opt == 'adam':
+#                self.lr = tf.train.exponential_decay(self.config.opt_lr, self.global_step, 100000, self.config.opt_decay)  # start lr=opt_lr, decay every 100000 steps with a base of opt_decay
 
     def add_encoder(self):
         K = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
@@ -155,13 +159,13 @@ class Model():
 
 
     def add_train(self):
-        if   self.config.net_opt == 'adam':     self.optimizer = tf.train.AdamOptimizer() 
+        if   self.config.net_opt == 'adam':     self.optimizer = tf.train.AdamOptimizer() ### uses default lr
         elif self.config.net_opt == 'sgd':      self.optimizer = tf.train.GradientDescentOptimizer(self.lr)
 #        elif self.config.net_opt == 'adagrad':  self.optimizer = tf.train.AdagradOptimizer(self.lr)
 #        elif self.config.net_opt == 'rmsprop':  self.optimizer = tf.train.RMSPropOptimizer(self.lr)
 #        elif self.config.net_opt == 'adadelta': self.optimizer = tf.train.AdadeltaOptimizer(self.lr)
         else:
-            sys.stderr.write("error: bad -lr_method option '{}'\n".format(self.config.net_opt))
+            sys.stderr.write("error: bad -net_opt option '{}'\n".format(self.config.net_opt))
             sys.exit()
 
         if self.config.clip > 0.0:
