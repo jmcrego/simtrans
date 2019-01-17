@@ -303,6 +303,7 @@ class Model():
             embed_snt_src_batch, len_src, mask1, mask2 = self.sess.run([self.embed_snt, self.len_src, self.mask1, self.mask2], feed_dict=fd)
             print("len_src {}".format(len_src))
             print("mask1",mask1)
+            print("mask2",mask2)
             sys.exit()
             if bitext:
                 fd = self.get_feed_dict(self.ref_as_src(ref_batch, len_tgt_batch))
