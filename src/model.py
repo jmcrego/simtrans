@@ -231,14 +231,14 @@ class Model():
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
             if (iter+1)%self.config.reports == 0:
+                tnow = time.time()
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f} time={:.2f} sec\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr,tnow-tpre))
+                tpre = now
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        tnow = time.time()
         sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
-        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f} time={:.2f} sec\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt),tnow-tpre)
-        tpre = now
+        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt))
         #keep records
         self.config.tloss = score.Loss
         self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
