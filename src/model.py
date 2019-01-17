@@ -66,10 +66,8 @@ class Model():
 
     def add_encoder(self):
         K = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
-        B = (np.array(self.input_src).shape)[0] #batch size
+        B = tf.shape(self.input_src)[0] #batch size
         Ss = tf.shape(self.input_src)[1] #seq_length
-#        B = tf.shape(self.input_src)[0] #batch size
-#        Ss = tf.shape(self.input_src)[1] #seq_length
         Vs = self.config.voc_src.length #src vocab
         Es = self.config.net_wrd_len #src embedding size
         Hs = np.divide(self.config.net_blstm_lens, 2) #src lstm sizes (half cells for each direction)
