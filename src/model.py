@@ -302,7 +302,7 @@ class Model():
             print("bitext={}".format(bitext))
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            mask = tf.sequence_mask(self.len_src)
+            mask = tf.sequence_mask(self.len_src, dtype=tf.float32)
             embed_snt_src_batch, embed_src_batch, out_src_batch, mask, len_src = self.sess.run([self.embed_snt, self.embed_src, self.out_src, mask, self.len_src], feed_dict=fd)
 
 
