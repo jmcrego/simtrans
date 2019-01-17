@@ -212,6 +212,7 @@ class Model():
         ini_time = time.time()
         score = Score()
         pscore = Score() ### partial score
+        tpre = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             assert(np.array(tgt_batch).shape == np.array(ref_batch).shape)
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lr)
@@ -234,8 +235,10 @@ class Model():
                 sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr))
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
+        tnow = time.time()
         sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
-        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt))
+        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f} time={:.2f} sec\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt),tnow-tpre)
+        tpre = now
         #keep records
         self.config.tloss = score.Loss
         self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
