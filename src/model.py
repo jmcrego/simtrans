@@ -99,6 +99,7 @@ class Model():
             elif self.config.net_sentence == 'max':
                 self.mask1 = tf.sequence_mask(self.len_src)
                 self.mask = tf.to_float(self.mask1) #[B,Ss] => [B,Ss,1]
+                self.mask = tf.expand_dims(self.mask, 2)
                 self.embed_snt = self.out_src * self.mask + (1-self.mask) * tf.float32.min #masked tokens contain -Inf
                 self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
             elif self.config.net_sentence == 'mean':
