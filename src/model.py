@@ -314,7 +314,7 @@ class Model():
                 print "\t".join(result)
 
         end_time = time.time()
-        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(len(tst), tst.nsrc, end_time - ini_time))
+        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time))
 
     def ref_as_src(self, ref, len_ref):
         ### add initial <bos> to ref and increase by 1 len_tgt
