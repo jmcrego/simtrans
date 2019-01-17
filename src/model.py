@@ -97,7 +97,7 @@ class Model():
                     sys.exit()
                 self.embed_snt = self.last_src #[B,Hs*2]
             elif self.config.net_sentence == 'max':
-                self.mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B,Ss] => [B,Ss,1]
+                self.mask = tf.to_float32(tf.sequence_mask(self.len_src)) #[B,Ss] => [B,Ss,1]
                 mask = tf.expand_dims(self.mask, 2) #[B,Ss] => [B,Ss,1]
                 self.embed_snt = self.out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
                 self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
@@ -302,10 +302,7 @@ class Model():
             print("bitext={}".format(bitext))
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            mask = tf.sequence_mask(self.len_src, dtype=tf.float32)
-            embed_snt_src_batch, embed_src_batch, out_src_batch, mask, len_src = self.sess.run([self.embed_snt, self.embed_src, self.out_src, mask, self.len_src], feed_dict=fd)
-
-
+            embed_snt_src_batch, embed_src_batch, out_src_batch, mask, len_src = self.sess.run([self.embed_snt, self.embed_src, self.out_src, self.mask, self.len_src], feed_dict=fd)
             print("len_src {}".format(len_src))
             print("mask_batch {}".format(np.array(mask).shape))
             print("mask_batch {}".format(mask))
