@@ -302,15 +302,10 @@ class Model():
             print("bitext={}".format(bitext))
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            embed_snt_src_batch, embed_src_batch, out_src_batch, mask1, mask, len_src = self.sess.run([self.embed_snt, self.embed_src, self.out_src, self.mask1, self.mask, self.len_src], feed_dict=fd)
-            print("len_src {}".format(len_src))
-            print("mask_batch {}".format(np.array(mask).shape))
-            print("mask_batch1 {}".format(mask1))
-            print("mask_batch {}".format(mask))
-            print("embed_src_batch {}".format(np.array(embed_src_batch).shape))
-            print("out_src_batch {}".format(np.array(out_src_batch).shape))
+            embed_snt_src_batch, mask1, mask = self.sess.run([self.embed_snt, self.mask1, self.mask], feed_dict=fd)
+            print("mask1 {}".format(mask1))
+            print("mask {}".format(mask))
             print("embed_snt_src_batch {}".format(np.array(embed_snt_src_batch).shape))
-            print("src_out_batch[1] {}".format(embed_src_batch[0][1]))
             sys.exit()
             if bitext:
                 fd = self.get_feed_dict(self.ref_as_src(ref_batch, len_tgt_batch))
