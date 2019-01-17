@@ -75,7 +75,7 @@ class Model():
         with tf.device('/cpu:0'), tf.variable_scope("embedding_src",reuse=tf.AUTO_REUSE):
             self.LT_src = tf.get_variable(initializer = self.embedding_initialize(Vs, Es, self.config.emb_src), dtype=tf.float32, name="embeddings_src")
             self.embed_src = tf.nn.embedding_lookup(self.LT_src, self.input_src, name="embed_src")
-            self.embed_src = tf.nn.dropout(self.embed_src, keep_prob=K)  #[B,Ss,L*2]
+            self.embed_src = tf.nn.dropout(self.embed_src, keep_prob=K)  #[B,Ss,Es]
 
         self.out_src = self.embed_src #[B,Ss,Es]
         #if not bi-lstm layers are used sentence_src is computed using either: max, mean (not last)
@@ -87,20 +87,23 @@ class Model():
                     cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, input_keep_prob=K)
                     cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, input_keep_prob=K)      
                     (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.out_src, sequence_length=self.len_src, dtype=tf.float32)
-                    self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B, Ss, Hs*2]
+                    self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,Hs*2]
             self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1) #[B, Hs*2] (i take [1] since last_state is a tuple with (c,h))
 
         with tf.variable_scope("sentence_src"):
             if self.config.net_sentence == 'last':
-                self.embed_snt = self.last_src #[B, Hs*2]
+                if len(Hs) == 0: 
+                    sys.stderr.write("error: -net_sentence 'last' cannot be used without any -net_blstm_lens layers\n")
+                    sys.exit()
+                self.embed_snt = self.last_src #[B,Hs*2]
             elif self.config.net_sentence == 'max':
-                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, Ss] => [B, Ss, 1]
+                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B,Ss] => [B,Ss,1]
                 self.embed_snt = self.out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
-                self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B, Hs*2]
+                self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B,Hs*2]
             elif self.config.net_sentence == 'mean':
-                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, Ss] => [B, Ss, 1]
+                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B,Ss] => [B,Ss,1]
                 self.embed_snt = self.out_src * mask #masked tokens contain 0.0
-                self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B, Hs*2]
+                self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B,Hs*2]
             else:
                 sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
                 sys.exit()
@@ -297,7 +300,9 @@ class Model():
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch, embed_src_batch, out_src_batch = self.sess.run([self.embed_snt, self.embed_src, self.out_src], feed_dict=fd)
-            print("embed_src_batch[1] {}".format(embed_src_batch[0][1]))
+            print("embed_src_batch {}".format(np.array(embed_src_batch).shape))
+            print("embed_snt_batch {}".format(np.array(embed_snt_batch).shape))
+            print("src_out_batch {}".format(np.array(src_out_batch).shape))
             print("src_out_batch[1] {}".format(embed_src_batch[0][1]))
 
             if bitext:
