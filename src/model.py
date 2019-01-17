@@ -275,7 +275,7 @@ class Model():
             if iter == 0 or score <= best_score: ### keep lr value
                 best_score = score
                 best_epoch = epoch
-            else: ### decay lr when score does not improves over the best
+            elif lr >= self.config.opt_minlr: ### decay lr if score does not improve over the best score (and lr is not too low)
                 lr *= self.config.opt_decay 
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write("{} End Training\n".format(curr_time))

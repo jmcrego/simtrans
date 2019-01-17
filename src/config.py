@@ -48,6 +48,7 @@ class Config():
    -dropout         FLOAT : dropout ratio applided to different layers [0.3]
    -opt_lr          FLOAT : initial learning rate [1.0] (not used for adam)
    -opt_decay       FLOAT : learning rate decay value when opt_method='sgd' [0.9] (not used for adam)
+   -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.005] (not used for adam)
    -clip            FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
    -max_sents         INT : Consider this number of sentences per batch (0 for all) [0]
    -n_epochs          INT : train for this number of epochs [1]
@@ -101,6 +102,7 @@ class Config():
         self.dropout = 0.3
         self.opt_lr = 1.0
         self.opt_decay = 0.9
+        self.opt_minlr = 0.005
         self.clip = 0.0
         self.max_sents = 0
         self.n_epochs = 1
@@ -155,6 +157,7 @@ class Config():
             elif (tok=="-dropout" and len(argv)):        self.dropout = float(argv.pop(0))
             elif (tok=="-opt_lr" and len(argv)):         self.opt_lr = float(argv.pop(0))
             elif (tok=="-opt_decay" and len(argv)):      self.opt_decay = float(argv.pop(0))
+            elif (tok=="-opt_minlr" and len(argv)):      self.opt_minlr = float(argv.pop(0))
             elif (tok=="-clip" and len(argv)):           self.clip = float(argv.pop(0))
             elif (tok=="-max_sents" and len(argv)):      self.max_sents = int(argv.pop(0))
             elif (tok=="-n_epochs" and len(argv)):       self.n_epochs = int(argv.pop(0))
