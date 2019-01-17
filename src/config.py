@@ -43,10 +43,10 @@ class Config():
    -net_blstm_lens STRING : units of src bi-lstm layers [1024-1024-1024] (3 layers with 512 cells for each direction)
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
-   -net_opt        STRING : GD method either: adam, adagrad, adadelta, sgd, rmsprop [adam]
+   -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop [sgd]
 
    -dropout         FLOAT : dropout ratio applided to different layers [0.3]
-   -opt_lr          FLOAT : initial learning rate [0.0002]
+   -opt_lr          FLOAT : initial learning rate [1.0] (not used for adam)
    -opt_decay       FLOAT : learning rate decay value when opt_method='sgd' [0.9] (not used for adam)
    -clip            FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
    -max_sents         INT : Consider this number of sentences per batch (0 for all) [0]
@@ -96,10 +96,10 @@ class Config():
         self.net_blstm_lens = [1024, 1024, 1024]
         self.net_sentence = 'max'
         self.net_lstm_len = 2048
-        self.net_opt = 'adam'
+        self.net_opt = 'sgd'
         #optimization
         self.dropout = 0.3
-        self.opt_lr = 0.0002
+        self.opt_lr = 1.0
         self.opt_decay = 0.9
         self.clip = 0.0
         self.max_sents = 0
