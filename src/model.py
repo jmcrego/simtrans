@@ -289,6 +289,8 @@ class Model():
             print("src_batch {}".format(src_batch))
             print("tgt_batch {}".format(tgt_batch))
             print("ref_batch {}".format(ref_batch))
+            print("len_src_batch {}".format(len_src_batch))
+            print("len_tgt_batch {}".format(len_tgt_batch))
             # if only src-side tgt_batch is [[]]
             if len(tgt_batch[0]): bitext = True
             else: bitext = False
