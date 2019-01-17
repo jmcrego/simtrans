@@ -66,7 +66,7 @@ class Model():
 
     def add_encoder(self):
         K = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
-        B = np.array(self.input_src).shape[0] #batch size
+        B = (np.array(self.input_src).shape)[0] #batch size
         Ss = tf.shape(self.input_src)[1] #seq_length
 #        B = tf.shape(self.input_src)[0] #batch size
 #        Ss = tf.shape(self.input_src)[1] #seq_length
