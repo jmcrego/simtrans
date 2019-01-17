@@ -286,9 +286,9 @@ class Model():
 
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
-            print(src_batch)
-            print(tgt_batch)
-            print(ref_batch)
+            print("src_batch ".format(src_batch))
+            print("tgt_batch ".format(tgt_batch))
+            print("ref_batch ".format(ref_batch))
             # if only src-side tgt_batch is [[]]
             if len(tgt_batch[0]): bitext = True
             else: bitext = False
