@@ -128,8 +128,9 @@ class Model():
             self.embed_tgt = tf.nn.dropout(self.embed_tgt, keep_prob=K)
 
         with tf.variable_scope("lstm_tgt",reuse=tf.AUTO_REUSE):
-            self.embed_snt = tf.expand_dims(self.embed_snt, 1) #[B, 1, Hs*2]
-            self.embed_snt = tf.tile(self.embed_snt, [1, St, 1]) #[B, St, Hs*2]
+            #self.embed_snt is the embedding of the source sentence
+            self.embed_snt_tgt = tf.expand_dims(self.embed_snt, 1) #[B, 1, Hs*2]
+            self.embed_snt_tgt = tf.tile(self.embed_snt, [1, St, 1]) #[B, St, Hs*2]
             self.embed_snt_tgt = tf.concat([self.embed_snt, self.embed_tgt], 2) #[B, St, Hs*2+Et]
             cell = tf.contrib.rnn.LSTMCell(Ht)
             self.out_tgt, state_tgt = tf.nn.dynamic_rnn(cell, self.embed_tgt, initial_state=self.initial_state, sequence_length=self.len_tgt, dtype=tf.float32)
