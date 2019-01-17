@@ -87,7 +87,7 @@ class Model():
                     cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, input_keep_prob=K)
                     cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, input_keep_prob=K)      
                     (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.out_src, sequence_length=self.len_src, dtype=tf.float32)
-            self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B, Ss, Hs*2]
+                    self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B, Ss, Hs*2]
             self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1) #[B, Hs*2] (i take [1] since last_state is a tuple with (c,h))
 
         with tf.variable_scope("sentence_src"):
