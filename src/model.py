@@ -287,16 +287,17 @@ class Model():
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
             print("src_batch {}".format(src_batch))
-            print("tgt_batch {}".format(tgt_batch))
-            print("ref_batch {}".format(ref_batch))
             print("len_src_batch {}".format(len_src_batch))
+            print("tgt_batch {}".format(tgt_batch))
             print("len_tgt_batch {}".format(len_tgt_batch))
+            print("ref_batch {}".format(ref_batch))
             # if only src-side tgt_batch is [[]]
             if len(tgt_batch[0]): bitext = True
             else: bitext = False
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
+            embed_snt_src_batch, embed_src_batch = self.sess.run(self.embed_snt, self.embed_src, feed_dict=fd)
+            print("embed_src_batch[1] {}".format(embed_src_batch[1]))
 
             if bitext:
                 fd = self.get_feed_dict(self.ref_as_src(ref_batch, len_tgt_batch))
