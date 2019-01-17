@@ -46,9 +46,9 @@ class Config():
    -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop [sgd]
 
    -dropout         FLOAT : dropout ratio applided to different layers [0.3]
-   -opt_lr          FLOAT : initial learning rate [1.0] (not used for adam)
-   -opt_decay       FLOAT : learning rate decay value when opt_method='sgd' [0.9] (not used for adam)
-   -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.005] (not used for adam)
+   -opt_lr          FLOAT : initial learning rate [1.0]                              (use 0.0002 for adam)
+   -opt_decay       FLOAT : learning rate decay value when opt_method='sgd' [0.9]    (use 0.98 for adam)
+   -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.005] (use 0.0 for adam)
    -clip            FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
    -max_sents         INT : Consider this number of sentences per batch (0 for all) [0]
    -n_epochs          INT : train for this number of epochs [1]

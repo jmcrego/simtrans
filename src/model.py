@@ -64,11 +64,6 @@ class Model():
         self.len_tgt       = tf.placeholder(tf.int32, shape=[None],      name="len_tgt")
         self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
 
-#        with tf.variable_scope("step_and_learning_rate"):
-#            self.global_step = tf.Variable(0, trainable=False)
-#            if self.config.net_opt == 'adam':
-#                self.lr = tf.train.exponential_decay(self.config.opt_lr, self.global_step, 100000, self.config.opt_decay)  # start lr=opt_lr, decay every 100000 steps with a base of opt_decay
-
     def add_encoder(self):
         K = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
         B = tf.shape(self.input_src)[0] #batch size
@@ -159,11 +154,11 @@ class Model():
 
 
     def add_train(self):
-        if   self.config.net_opt == 'adam':     self.optimizer = tf.train.AdamOptimizer() ### uses default lr
+        if   self.config.net_opt == 'adam':     self.optimizer = tf.train.AdamOptimizer(self.lr)
         elif self.config.net_opt == 'sgd':      self.optimizer = tf.train.GradientDescentOptimizer(self.lr)
-#        elif self.config.net_opt == 'adagrad':  self.optimizer = tf.train.AdagradOptimizer(self.lr)
-#        elif self.config.net_opt == 'rmsprop':  self.optimizer = tf.train.RMSPropOptimizer(self.lr)
-#        elif self.config.net_opt == 'adadelta': self.optimizer = tf.train.AdadeltaOptimizer(self.lr)
+        elif self.config.net_opt == 'adagrad':  self.optimizer = tf.train.AdagradOptimizer(self.lr)
+        elif self.config.net_opt == 'rmsprop':  self.optimizer = tf.train.RMSPropOptimizer(self.lr)
+        elif self.config.net_opt == 'adadelta': self.optimizer = tf.train.AdadeltaOptimizer(self.lr)
         else:
             sys.stderr.write("error: bad -net_opt option '{}'\n".format(self.config.net_opt))
             sys.exit()
@@ -174,7 +169,6 @@ class Model():
             self.train_op = self.optimizer.apply_gradients(zip(grads, tvars))
         else:
             self.train_op = self.optimizer.minimize(self.loss)
-#        tf.add_to_collection("train_op", self.train_op) ### adds train_op to graph (this way it will be saved)
 
 
     def build_graph(self):
@@ -229,13 +223,12 @@ class Model():
             #print("shape of out_logits = {}".format(np.array(out_logits).shape))
             #print("shape of out_pred = {}\n{}".format(np.array(out_pred).shape, out_pred))
             #sys.exit()
-            if  self.config.net_opt == 'adam': _, loss, used_lr = self.sess.run([self.train_op, self.loss, self.optimizer._lr_t], feed_dict=fd)
-            elif self.config.net_opt == 'sgd': _, loss, used_lr = self.sess.run([self.train_op, self.loss, self.optimizer._learning_rate_tensor], feed_dict=fd)
+            _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
             if (iter+1)%self.config.reports == 0:
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,used_lr))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f}\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr))
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
