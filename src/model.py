@@ -296,12 +296,16 @@ class Model():
 #            print("len_tgt_batch {}".format(len_tgt_batch))
 #            print("ref_batch {}".format(ref_batch))
             # if only src-side tgt_batch is [[]]
+
             if len(tgt_batch[0]): bitext = True
             else: bitext = False
             print("bitext={}".format(bitext))
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            embed_snt_src_batch, embed_src_batch, out_src_batch, mask, len_src = self.sess.run([self.embed_snt, self.embed_src, self.out_src, self.mask, self.len_src], feed_dict=fd)
+            mask = tf.sequence_mask(self.len_src)
+            embed_snt_src_batch, embed_src_batch, out_src_batch, mask, len_src = self.sess.run([self.embed_snt, self.embed_src, self.out_src, mask, self.len_src], feed_dict=fd)
+
+
             print("len_src {}".format(len_src))
             print("mask_batch {}".format(np.array(mask).shape))
             print("mask_batch {}".format(mask))
