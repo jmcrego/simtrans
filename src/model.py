@@ -97,7 +97,7 @@ class Model():
                     sys.exit()
                 self.embed_snt = self.last_src #[B,Hs*2]
             elif self.config.net_sentence == 'max':
-                self.mask1 = tf.sequence_mask(self.len_src)
+                self.mask1 = tf.sequence_mask(self.len_src, dtype=tf.int32)
                 self.mask = tf.to_float(self.mask1) #[B,Ss] => [B,Ss,1]
                 mask = tf.expand_dims(self.mask, 2) #[B,Ss] => [B,Ss,1]
                 self.embed_snt = self.out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
