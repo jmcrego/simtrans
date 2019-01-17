@@ -301,6 +301,7 @@ class Model():
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch, embed_src_batch, out_src_batch, mask = self.sess.run([self.embed_snt, self.embed_src, self.out_src, self.mask], feed_dict=fd)
             print("mask_batch {}".format(np.array(mask).shape))
+            print("mask_batch {}".format(mask))
             print("embed_src_batch {}".format(np.array(embed_src_batch).shape))
             print("out_src_batch {}".format(np.array(out_src_batch).shape))
             print("embed_snt_src_batch {}".format(np.array(embed_snt_src_batch).shape))
