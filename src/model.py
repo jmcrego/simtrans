@@ -98,8 +98,8 @@ class Model():
                 self.embed_snt = self.last_src #[B,Hs*2]
             elif self.config.net_sentence == 'max':
                 self.mask = tf.sequence_mask(self.len_src, dtype=tf.float32) #[B,Ss] => [B,Ss,1]
-                self.mask = tf.expand_dims(self.mask, 2) #[B,Ss] => [B,Ss,1]
-                self.embed_snt = self.out_src * self.mask + (1-self.mask) * tf.float32.min #masked tokens contain -Inf
+                mask = tf.expand_dims(self.mask, 2) #[B,Ss] => [B,Ss,1]
+                self.embed_snt = self.out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
                 self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
             elif self.config.net_sentence == 'mean':
                 self.embed_snt = self.out_src * mask #masked tokens contain 0.0
