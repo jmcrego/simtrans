@@ -301,8 +301,8 @@ class Model():
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch, embed_src_batch, out_src_batch = self.sess.run([self.embed_snt, self.embed_src, self.out_src], feed_dict=fd)
             print("embed_src_batch {}".format(np.array(embed_src_batch).shape))
-            print("src_out_batch {}".format(np.array(src_out_batch).shape))
-            print("embed_snt_batch {}".format(np.array(embed_snt_src_batch).shape))
+            print("out_src_batch {}".format(np.array(out_src_batch).shape))
+            print("embed_snt_src_batch {}".format(np.array(embed_snt_src_batch).shape))
             print("src_out_batch[1] {}".format(embed_src_batch[0][1]))
 
             if bitext:
