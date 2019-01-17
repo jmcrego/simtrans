@@ -102,6 +102,7 @@ class Model():
                 self.embed_snt = self.out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
                 self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
             elif self.config.net_sentence == 'mean':
+                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, Ss] => [B, Ss, 1]
                 self.embed_snt = self.out_src * mask #masked tokens contain 0.0
                 self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B,Hs*2]
             else:
@@ -124,16 +125,15 @@ class Model():
 
         with tf.device('/cpu:0'), tf.variable_scope("embedding_tgt"):
             self.LT_tgt = tf.get_variable(initializer = self.embedding_initialize(Vt, Et, self.config.emb_tgt), dtype=tf.float32, name="embeddings_tgt")
-            self.embed_tgt = tf.nn.embedding_lookup(self.LT_tgt, self.input_tgt, name="embed_tgt") #[B, S, Et]
+            self.embed_tgt = tf.nn.embedding_lookup(self.LT_tgt, self.input_tgt, name="embed_tgt") #[B, St, Et]
             self.embed_tgt = tf.nn.dropout(self.embed_tgt, keep_prob=K)
 
         with tf.variable_scope("lstm_tgt",reuse=tf.AUTO_REUSE):
-            #self.embed_snt is the embedding of the source sentence
-            self.embed_snt_tgt = tf.expand_dims(self.embed_snt, 1) #[B, 1, Hs*2]
-            self.embed_snt_tgt = tf.tile(self.embed_snt, [1, St, 1]) #[B, St, Hs*2]
-            self.embed_snt_tgt = tf.concat([self.embed_snt, self.embed_tgt], 2) #[B, St, Hs*2+Et]
+            self.embed_snt_src = tf.expand_dims(self.embed_snt, 1) #[B,Hs*2] or [B,Es] => [B,1,Hs*2] or [B,1,Es]
+            self.embed_snt_src = tf.tile(self.embed_snt_src, [1, St, 1]) #[B,St,Hs*2] or [B,St,Es]
+            self.embed_snt_src_plus_tgt = tf.concat([self.embed_snt_src, self.embed_tgt], 2) #[B, St, Hs*2+Et] or [B, St, Es+Et]
             cell = tf.contrib.rnn.LSTMCell(Ht)
-            self.out_tgt, state_tgt = tf.nn.dynamic_rnn(cell, self.embed_tgt, initial_state=self.initial_state, sequence_length=self.len_tgt, dtype=tf.float32)
+            self.out_tgt, state_tgt = tf.nn.dynamic_rnn(cell, self.embed_snt_src_plus_tgt, initial_state=self.initial_state, sequence_length=self.len_tgt, dtype=tf.float32)
             ### self.embed_tgt is like: LID my sentence <pad> ... (LID is like a bos that also encodes the language to produce)
             ### self.out_tgt   is like: my sentence <eos> 0.0 ...
 
