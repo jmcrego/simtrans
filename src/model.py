@@ -296,7 +296,7 @@ class Model():
             else: bitext = False
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            embed_snt_src_batch, embed_src_batch = self.sess.run(self.embed_snt, self.embed_src, feed_dict=fd)
+            embed_snt_src_batch, embed_src_batch = self.sess.run([self.embed_snt, self.embed_src], feed_dict=fd)
             print("embed_src_batch[1] {}".format(embed_src_batch[1]))
 
             if bitext:
