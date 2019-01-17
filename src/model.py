@@ -303,7 +303,7 @@ class Model():
             print("bitext={}".format(bitext))
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            embed_snt_src_batch, len_src, mask1 = self.sess.run([self.embed_snt, self.len_src self.mask1], feed_dict=fd)
+            embed_snt_src_batch, len_src, mask1 = self.sess.run([self.embed_snt, self.len_src, self.mask1], feed_dict=fd)
             print("len_src {}".format(len_src))
             print("mask1 {}".format(mask1))
 #            print("mask2 {}".format(mask2))
