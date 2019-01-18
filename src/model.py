@@ -338,6 +338,7 @@ class Model():
         ### ref  is: 'LID my sentence <eos>' OR 'my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
+        print("contains_lid",contains_lid)
         if contains_lid: #delete LID tokens (length is not modified)
             ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
         else: #increase length by 1
