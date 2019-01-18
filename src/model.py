@@ -340,7 +340,7 @@ class Model():
         print("ref[0]"," ".join([str(e) for e in ref[0]]))
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
         print("ref[0]"," ".join([str(e) for e in ref[0]]))
-        sys.exit()
+#        sys.exit()
         len_ref += np.ones_like(len_ref, dtype=int)
         return ref, len_ref
 
