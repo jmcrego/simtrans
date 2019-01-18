@@ -338,21 +338,23 @@ class Model():
         ### ref  is: 'LID my sentence <eos>' OR 'my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
-        print("contains_lid",contains_lid)
-        print("ref {}".format(ref))
-        print("len_ref {}".format(len_ref))
+        tgt = list(ref)
+        len_tgt = list(len_ref)
+        print("ref {}".format(tgt))
+        print("len_ref {}".format(len_tgt))
 
         if contains_lid: #delete LID tokens (length is not modified)
-            ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
+            tgt = np.delete(tgt, 0, 1) ### deletes the 0-th element in axis=1 from matrix tgt
         else: #increase length by 1
-            len_ref += np.ones_like(len_ref, dtype=int)
+            len_tgt += np.ones_like(len_tgt, dtype=int)
 
-        print("ref2 {}".format(ref))
-        print("len_ref2 {}".format(len_ref))
-        #insert idx_bos in the begining (0) of axis=1 from matrix ref
-        ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
+        #insert idx_bos in the begining (0) of axis=1 from matrix tgt
+        tgt = np.insert(tgt, 0, self.config.voc_tgt.idx_bos, axis=1)
 
-        return ref, len_ref
+        print("tgt {}".format(tgt))
+        print("len_tgt {}".format(len_tgt))
+
+        return tgt, len_tgt
 
     def compute_sim(self, src, tgt):
         sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
