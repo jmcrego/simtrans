@@ -338,17 +338,17 @@ class Model():
         ### ref  is: 'LID my sentence <eos>' OR 'my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
-        ref = list(ref)
-        len_ref = list(len_ref)
         print("contains_lid",contains_lid)
         print("ref {}".format(ref))
+        print("len_ref {}".format(len_ref))
 
         if contains_lid: #delete LID tokens (length is not modified)
             ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
         else: #increase length by 1
             len_ref += np.ones_like(len_ref, dtype=int)
 
-        print("ref shape",np.array(ref).shape)
+        print("ref2 {}".format(ref))
+        print("len_ref2 {}".format(len_ref))
         #insert idx_bos in the begining (0) of axis=1 from matrix ref
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
 
