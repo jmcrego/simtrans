@@ -333,7 +333,7 @@ class Model():
 #        bos = np.full([B,S], self.config.voc_tgt.idx_bos, dtype=int)
 #        print("bos after full", bos)
         ref = np.insert(ref,0,self.config.voc_tgt.idx_bos)
-        print("ref after insert", ref)
+        print("ref[0] after insert", ref[0])
         sys.exit()
 
         len_ref += 1
