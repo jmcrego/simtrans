@@ -339,6 +339,8 @@ class Model():
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
         print("ref",ref)
+        for k,r in enumerate(ref):
+            print("lenght[{}]={}".format(k,len(r)))
         tgt = np.array(ref)
         len_tgt = np.array(len_ref)
         print("ref",tgt)
