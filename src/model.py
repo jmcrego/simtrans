@@ -337,9 +337,9 @@ class Model():
     def ref_as_src(self, ref, len_ref):
         ### add initial <bos> to ref and increase by 1 len_tgt
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
-        print("shape={}".format(np.array(ref).shape))
+        print("ref[0]",ref[0])
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
-        print("shape={}".format(np.array(ref).shape))
+        print("ref[0]",ref[0])
         sys.exit()
         len_ref += np.ones_like(len_ref, dtype=int)
         return ref, len_ref
