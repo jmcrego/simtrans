@@ -332,7 +332,7 @@ class Model():
         B, S = np.array(ref).shape
 #        bos = np.full([B,S], self.config.voc_tgt.idx_bos, dtype=int)
 #        print("bos after full", bos)
-        ref = np.insert(ref,0,self.config.voc_tgt.idx_bos)
+        ref = np.insert(ref,0,self.config.voc_tgt.idx_bos, axis=1)
         print("ref[0] after insert", ref[0])
         sys.exit()
 
