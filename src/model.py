@@ -337,7 +337,7 @@ class Model():
     def ref_as_src(self, ref):
         ### replace from ref the initial LID by <bos>
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
-        ref = np.detele(ref, 0, 1)
+        ref = np.delete(ref, 0, 1)
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
         return ref
 
