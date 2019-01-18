@@ -326,7 +326,7 @@ class Model():
                     if bitext: result.append(" ".join(raw_tgt_batch[i_sent]))
 
                 if self.config.show_idx: 
-                    result.append(" ".join(src_batch[i_sent]))
+                    result.append(" ".join([str(e) for e in src_batch[i_sent]]))
                     if bitext: result.append(" ".join([str(e) for e in tgt_batch_as_src[i_sent]]))
 
                 print "\t".join(result)
