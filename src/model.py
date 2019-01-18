@@ -349,7 +349,7 @@ class Model():
             len_tgt += np.ones_like(len_tgt, dtype=int)
 
         #insert idx_bos in the begining (0) of axis=1 from matrix tgt
-        tgt = np.insert(tgt, 0, self.config.voc_tgt.idx_bos, axis=1)
+        tgt = np.insert(np.array(tgt), 0, self.config.voc_tgt.idx_bos, axis=1)
 
         print("tgt {}".format(tgt))
         print("len_tgt {}".format(len_tgt))
