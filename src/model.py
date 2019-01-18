@@ -329,15 +329,11 @@ class Model():
     def ref_as_src(self, ref, len_ref):
         ### add initial <bos> to ref and increase by 1 len_tgt
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
-        B, S = np.array(ref).shape
-#        bos = np.full([B,S], self.config.voc_tgt.idx_bos, dtype=int)
-#        print("bos after full", bos)
         ref = np.insert(ref,0,self.config.voc_tgt.idx_bos, axis=1)
         print("ref[0] after insert", ref[0])
-        sys.exit()
-
         len_ref += 1
         print("len_ref after add 1", len_ref)
+        sys.exit()
         return ref, len_ref
 
     def compute_sim(self, src, tgt):
