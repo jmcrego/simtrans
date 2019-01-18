@@ -132,8 +132,6 @@ class Dataset():
                 else: tgt = tline.split(' ')
                 if self.lid_add: tgt.insert(0,self.lid_voc[0])
                 tgt.append(str_eos)
-                print(tgt)
-                sys.exit()
 
             self.data.append([len(src),src,tgt])
 
