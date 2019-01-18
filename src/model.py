@@ -338,8 +338,8 @@ class Model():
         ### ref  is: 'LID my sentence <eos>' OR 'my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
-        tgt = np.array(ref)
-        len_tgt = np.array(len_ref)
+        tgt = np.asarray(ref)
+        len_tgt = np.asarray(len_ref)
         print("ref",tgt)
         print("len_ref",len_tgt)
 
