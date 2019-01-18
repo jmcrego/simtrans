@@ -304,7 +304,8 @@ class Model():
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
-                fd = self.get_feed_dict(self.ref_as_src(ref_batch, len_tgt_batch))
+                tgt_batch, len_tgt_batch = self.ref_as_src(ref_batch, len_tgt_batch)
+                fd = self.get_feed_dict(tgt_batch, len_tgt_batch)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             for i_sent in range(len(embed_snt_src_batch)):
