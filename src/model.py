@@ -340,19 +340,19 @@ class Model():
         ### len_ref must be accordingly modified if the length of ref is changed
         tgt = list(ref)
         len_tgt = list(len_ref)
-        print("ref {}".format(tgt))
-        print("len_ref {}".format(len_tgt))
+        print("ref",tgt)
+        print("len_ref",len_tgt)
 
         if contains_lid: #delete LID tokens (length is not modified)
             tgt = np.delete(tgt, 0, 1) ### deletes the 0-th element in axis=1 from matrix tgt
+            print("tgt",tgt)
         else: #increase length by 1
             len_tgt += np.ones_like(len_tgt, dtype=int)
+            print("len_tgt",len_tgt)
 
         #insert idx_bos in the begining (0) of axis=1 from matrix tgt
-        tgt = np.insert(np.array(tgt), 0, self.config.voc_tgt.idx_bos, axis=1)
-
-        print("tgt {}".format(tgt))
-        print("len_tgt {}".format(len_tgt))
+        tgt = np.insert(tgt, 0, self.config.voc_tgt.idx_bos, axis=1)
+        print("tgt",tgt)
 
         return tgt, len_tgt
 
