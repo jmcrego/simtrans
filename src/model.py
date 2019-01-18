@@ -304,24 +304,30 @@ class Model():
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
-#                tgt_batch, len_tgt_batch = self.ref_as_src(ref_batch, len_tgt_batch)
-#                fd = self.get_feed_dict(tgt_batch, len_tgt_batch)
-                fd = self.get_feed_dict(self.ref_as_src(ref_batch, len_tgt_batch))
+                tgt_batch_as_src, len_tgt_batch_as_src = self.ref_as_src(ref_batch, len_tgt_batch)
+                fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch_as_src)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             for i_sent in range(len(embed_snt_src_batch)):
                 result = []
                 if self.config.show_sim:
                     if bitext: result.append("{:.6f}".format(self.compute_sim(embed_snt_src_batch[i_sent], embed_snt_tgt_batch[i_sent])))
+
                 if self.config.show_oov:
                     result.append("{}".format(nsrc_unk_batch[i_sent]))
                     if bitext: result.append("{}".format(ntgt_unk_batch[i_sent]))
+
                 if self.config.show_emb: 
                     result.append(" ".join(["{:.6f}".format(e) for e in embed_snt_src_batch[i_sent]]))
                     if bitext: result.append(" ".join(["{:.6f}".format(e) for e in embed_snt_tgt_batch[i_sent]]))
+
                 if self.config.show_snt: 
                     result.append(" ".join(raw_src_batch[i_sent]))
                     if bitext: result.append(" ".join(raw_tgt_batch[i_sent]))
+
+                if self.config.show_idx: 
+                    result.append(" ".join(src_batch[i_sent]))
+                    if bitext: result.append(" ".join(tgt_batch_as_src[i_sent]))
 
                 print "\t".join(result)
 

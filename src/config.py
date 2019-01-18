@@ -62,11 +62,12 @@ class Config():
    -show_oov              : output number of OOVs 
    -show_emb              : output sentence embeddings
    -show_snt              : output original sentences
+   -show_idx              : output idx of sentences
 
 + Options marked with * must be set. The rest have default values.
 + If -mdir exists in learning mode, learning continues after restoring the last model
 + Training data is always shuffled at every epoch
-+ -show_sim, -show_oov, -show_emb, -show_snt can be used at the same time
++ -show_sim, -show_oov, -show_emb, -show_snt -show_idx can be used at the same time
 """.format(sys.argv.pop(0))
 
         self.mdir = None
@@ -116,6 +117,7 @@ class Config():
         self.show_oov = False
         self.show_emb = False
         self.show_snt = False
+        self.show_idx = False
 
         self.parse(sys.argv)
         tf.set_random_seed(self.seed)
@@ -170,6 +172,7 @@ class Config():
             elif (tok=="-show_oov"):                     self.show_oov = True
             elif (tok=="-show_emb"):                     self.show_emb = True
             elif (tok=="-show_snt"):                     self.show_snt = True
+            elif (tok=="-show_idx"):                     self.show_idx = True
             elif (tok=="-h"):
                 sys.stderr.write("{}".format(self.usage))
                 sys.exit()
