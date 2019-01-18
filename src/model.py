@@ -337,8 +337,14 @@ class Model():
     def ref_as_src(self, ref, len_ref):
         ### replace from ref the initial LID by <bos>
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
+        ### attention: ref must NOT contain LID, if it contains LID it needs to be deleted
+        contains_lid = ref[0][0] in self.config.lid_voc
+        if contains_lid:
+            ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
+        else: #remove lid
+            len_ref += np.ones_like(len_ref, dtype=int)
+        #insert idx_bos as in the begining (0) of axis=1 from matrix ref
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
-        len_ref += np.ones_like(len_ref, dtype=int)
         return ref, len_ref
 
     def compute_sim(self, src, tgt):
