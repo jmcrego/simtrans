@@ -343,7 +343,7 @@ class Model():
         else: #increase length by 1
             len_ref += np.ones_like(len_ref, dtype=int)
 
-        print("ref shape",ref.shape)
+        print("ref shape",np.array(ref).shape)
         #insert idx_bos in the begining (0) of axis=1 from matrix ref
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
 
