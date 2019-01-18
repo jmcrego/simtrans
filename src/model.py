@@ -330,9 +330,9 @@ class Model():
         ### add initial <bos> to ref and increase by 1 len_tgt
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
         B, S = np.array(ref).shape
-        bos = np.full([B], self.config.voc_tgt.idx_bos, dtype=int)
+        bos = np.full([[B]], self.config.voc_tgt.idx_bos, dtype=int)
         print("bos after full", bos)
-        ref = np.concatenate((bos, ref.T), axis=1)
+        ref = np.concatenate((bos, ref), axis=1)
         print("ref after concatenate", ref)
         sys.exit()
 
