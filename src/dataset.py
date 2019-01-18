@@ -180,6 +180,8 @@ class Dataset():
         for src, tgt in self.data_batch[index]:
             # src is like: <bos> my sentence <eos>
             # tgt is like: LID my sentence <eos>    (LID works as bos)
+            print("src",src)
+            print("tgt",tgt)
 
             self.nsrc += len(src) - 2
             nsrc_unk = 0
@@ -200,6 +202,9 @@ class Dataset():
                     if i>0: iref.append(idx_t) ### all but the first element
                     if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
                 self.nunk_tgt += ntgt_unk
+            print("isrc",isrc)
+            print("itgt",itgt)
+            print("iref",iref)
 
             #### update data
             if len(isrc) > max_src: max_src = len(isrc)
