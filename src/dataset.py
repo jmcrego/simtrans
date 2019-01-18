@@ -182,9 +182,9 @@ class Dataset():
         max_src, max_tgt = 0, 0
         for src, tgt in self.data_batch[index]:
             # src is like: <bos> my sentence <eos>
-            # tgt is like: LID my sentence <eos>    (LID works as bos)
-            print("src",src)
-            print("tgt",tgt)
+            # tgt is like: LID my sentence <eos> OR my sentence <eos>   (LID works as bos)
+#            print("src",src)
+#            print("tgt",tgt)
 
             self.nsrc += len(src) - 2
             nsrc_unk = 0
@@ -193,18 +193,22 @@ class Dataset():
                 isrc.append(self.voc_src.get(s))
                 if isrc[-1] == idx_unk: nsrc_unk += 1
             self.nunk_src += nsrc_unk
+#            print("isrc",isrc)
             
             ntgt_unk = 0
             iref = [] #must be: my sentence <eos>
             itgt = [] #must be: LID my sentence OR my sentence
             if len(tgt)>0:
-                self.ntgt += len(tgt) - 2
+                if self.tgt_contains_lid: self.ntgt += len(tgt) - 2
+                else: self.ntgt += len(tgt) - 1
                 for i,t in enumerate(tgt): 
                     idx_t = self.voc_tgt.get(t)
                     if idx_t == idx_unk: ntgt_unk += 1
                     if not self.tgt_contains_lid or i>0: iref.append(idx_t) ### do not include LID
                     if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
                 self.nunk_tgt += ntgt_unk
+#            print("itgt",itgt)
+#            print("iref",iref)
 
             #### update data
             if len(isrc) > max_src: max_src = len(isrc)
