@@ -335,29 +335,29 @@ class Model():
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time))
 
     def ref_as_src(self, ref, len_ref, contains_lid):
-        ### ref  is: 'LID my sentence <eos>' OR 'my sentence <eos>'
+        ### ref  is: 'my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
-        print("ref",ref)
-        for k,r in enumerate(ref):
-            print("lenght[{}]={}".format(k,len(r)))
-        tgt = np.array(ref)
-        len_tgt = np.array(len_ref)
-        print("ref",tgt)
-        print("len_ref",len_tgt)
+#        print("ref",ref)
+#        for k,r in enumerate(ref):
+#            print("lenght[{}]={}".format(k,len(r)))
+#        tgt = np.array(ref)
+#        len_tgt = np.array(len_ref)
+#        print("ref",tgt)
+#        print("len_ref",len_tgt)
 
         if contains_lid: #delete LID tokens (length is not modified)
-            tgt = np.delete(tgt, 0, 1) ### deletes the 0-th element in axis=1 from matrix tgt
-            print("tgt",tgt)
+            ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix tgt
+#            print("tgt",tgt)
         else: #increase length by 1
-            len_tgt += np.ones_like(len_tgt, dtype=int)
-            print("len_tgt",len_tgt)
+            len_ref += np.ones_like(len_ref, dtype=int)
+#            print("len_tgt",len_tgt)
 
         #insert idx_bos in the begining (0) of axis=1 from matrix tgt
-        tgt = np.insert(tgt, 0, self.config.voc_tgt.idx_bos, axis=1)
-        print("tgt",tgt)
+        ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
+#        print("tgt",tgt)
 
-        return tgt, len_tgt
+        return ref, len_ref
 
     def compute_sim(self, src, tgt):
         sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
