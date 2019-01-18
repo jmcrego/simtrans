@@ -337,14 +337,16 @@ class Model():
     def ref_as_src(self, ref, len_ref, contains_lid):
         ### add in ref <bos>, incrase len_ref by 1
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
-#        print('ref1',ref[0])
         if contains_lid: #delete LID tokens
             ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
         else: #increase length by 1
             len_ref += np.ones_like(len_ref, dtype=int)
+
         #insert idx_bos in the begining (0) of axis=1 from matrix ref
-        ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
-#        print('ref2',ref[0])
+#        ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
+        for b in range(len(ref)):
+            ref[b].insert(0,self.config.voc_tgt.idx_bos)
+
         return ref, len_ref
 
     def compute_sim(self, src, tgt):
