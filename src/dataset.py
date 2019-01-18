@@ -130,7 +130,7 @@ class Dataset():
                 tline = ft.readline().strip('\n')
                 if config.tok_tgt: tgt, _ = config.tok_tgt.tokenize(str(tline))
                 else: tgt = tline.split(' ')
-                if self.lid_add: tgt.insert(0,self.lid_voc[0])
+                if self.lid_add: tgt = tgt.insert(0,self.lid_voc[0])
                 tgt.append(str_eos)
 
             self.data.append([len(src),src,tgt])
