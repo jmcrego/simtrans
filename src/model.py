@@ -303,10 +303,12 @@ class Model():
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
+            print("A")
             if bitext:
                 tgt_batch_as_src, len_tgt_batch_as_src = self.ref_as_src(ref_batch, len_tgt_batch, tst.tgt_contains_lid)
                 fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch_as_src)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
+            print("B")
 
             for i_sent in range(len(embed_snt_src_batch)):
                 result = []
