@@ -182,7 +182,7 @@ class Dataset():
         max_src, max_tgt = 0, 0
         for src, tgt in self.data_batch[index]:
             # src is like: <bos> my sentence <eos>
-            # tgt is like: LID my sentence <eos> OR my sentence <eos>   (LID works as bos)
+            # tgt is like: LID my sentence <eos> OR my sentence <eos>   (LID is not added for inference)
 #            print("src",src)
 #            print("tgt",tgt)
 
@@ -197,7 +197,7 @@ class Dataset():
             
             ntgt_unk = 0
             iref = [] #must be: my sentence <eos>
-            itgt = [] #must be: LID my sentence OR my sentence
+            itgt = [] #must be: LID my sentence OR my sentence 
             if len(tgt)>0:
                 if self.tgt_contains_lid: self.ntgt += len(tgt) - 2
                 else: self.ntgt += len(tgt) - 1
@@ -207,8 +207,8 @@ class Dataset():
                     if not self.tgt_contains_lid or i>0: iref.append(idx_t) ### do not include LID
                     if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
                 self.nunk_tgt += ntgt_unk
-#            print("itgt",itgt)
-#            print("iref",iref)
+            print("itgt",itgt)
+            print("iref",iref)
 
             #### update data
             if len(isrc) > max_src: max_src = len(isrc)
