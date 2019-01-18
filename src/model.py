@@ -337,8 +337,8 @@ class Model():
     def ref_as_src(self, ref, len_ref):
         ### replace from ref the initial LID by <bos>
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
-        ### attention: ref must NOT contain LID, if it contains LID it needs to be deleted
         contains_lid = ref[0][0] in self.config.lid_voc
+        print("contains_lid",contains_lid)
         if contains_lid:
             ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
         else: #remove lid
