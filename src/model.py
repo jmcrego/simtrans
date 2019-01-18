@@ -304,7 +304,7 @@ class Model():
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
-                tgt_batch_as_src, len_tgt_batch_as_src = self.ref_as_src(ref_batch, len_tgt_batch)
+                tgt_batch_as_src, len_tgt_batch_as_src = self.ref_as_src(ref_batch, len_tgt_batch, tst.tgt_contains_lid)
                 fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch_as_src)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
@@ -334,18 +334,17 @@ class Model():
         end_time = time.time()
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time))
 
-    def ref_as_src(self, ref, len_ref):
+    def ref_as_src(self, ref, len_ref, contains_lid):
         ### add in ref <bos>, incrase len_ref by 1
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
-        print('ref1',ref[0])
-        contains_lid = False #ref[0][0] in self.config.lid_voc
+#        print('ref1',ref[0])
         if contains_lid: #delete LID tokens
             ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
         else: #increase length by 1
             len_ref += np.ones_like(len_ref, dtype=int)
         #insert idx_bos in the begining (0) of axis=1 from matrix ref
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
-        print('ref2',ref[0])
+#        print('ref2',ref[0])
         return ref, len_ref
 
     def compute_sim(self, src, tgt):

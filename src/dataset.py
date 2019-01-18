@@ -103,6 +103,7 @@ class Dataset():
         self.seq_size = config.seq_size
         self.max_sents = config.max_sents
         self.do_shuffle = do_shuffle
+        self.tgt_contains_lid = False
         self.data = []
         self.data_batch = []
 #        self.length = 0 ### length of the data set to be used (not necessarily the whole set)
@@ -132,6 +133,8 @@ class Dataset():
                 else: tgt = tline.split(' ')
                 if self.lid_add: tgt.insert(0,self.lid_voc[0])
                 tgt.append(str_eos)
+                if len(self.data)==1: ### check (only the first line) if LID token is already added
+                    self.tgt_contains_lid = tgt[0] in self.lid_voc
 
             self.data.append([len(src),src,tgt])
 
@@ -193,18 +196,15 @@ class Dataset():
             
             ntgt_unk = 0
             iref = [] #must be: my sentence <eos>
-            itgt = [] #must be: LID my sentence
+            itgt = [] #must be: LID my sentence OR my sentence
             if len(tgt)>0:
                 self.ntgt += len(tgt) - 2
                 for i,t in enumerate(tgt): 
                     idx_t = self.voc_tgt.get(t)
                     if idx_t == idx_unk: ntgt_unk += 1
-                    if i>0: iref.append(idx_t) ### all but the first element
+                    if not self.tgt_contains_lid or i>0: iref.append(idx_t) ### do not include LID
                     if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
                 self.nunk_tgt += ntgt_unk
-            print("isrc",isrc)
-            print("itgt",itgt)
-            print("iref",iref)
 
             #### update data
             if len(isrc) > max_src: max_src = len(isrc)
