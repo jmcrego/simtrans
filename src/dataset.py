@@ -207,8 +207,8 @@ class Dataset():
                     if not self.tgt_contains_lid or i>0: iref.append(idx_t) ### do not include LID
                     if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
                 self.nunk_tgt += ntgt_unk
-            print("itgt",itgt)
-            print("iref",iref)
+#            print("itgt",itgt)
+#            print("iref",iref)
 
             #### update data
             if len(isrc) > max_src: max_src = len(isrc)
@@ -228,6 +228,8 @@ class Dataset():
             while len(SRC[i]) < max_src: SRC[i].append(idx_pad) #<pad>
             while len(TGT[i]) < max_tgt: TGT[i].append(idx_pad) #<pad>
             while len(REF[i]) < max_tgt: REF[i].append(idx_pad) #<pad>
+            print("TGT",TGT[i])
+            print("REF",REF[i])
 
         #print("BATCH max_src={} max_tgt={}".format(max_src,max_tgt))
         #print("LEN_SRC: {}".format(LEN_SRC))
