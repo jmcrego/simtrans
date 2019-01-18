@@ -197,7 +197,7 @@ class Dataset():
             
             ntgt_unk = 0
             iref = [] #must be: my sentence <eos>
-            itgt = [] #must be: LID my sentence OR my sentence 
+            itgt = [] #must be: LID my sentence OR my sentence (in inference, ref may be larger than tgt if tgt does not contain LID)
             if len(tgt)>0:
                 if self.tgt_contains_lid: self.ntgt += len(tgt) - 2
                 else: self.ntgt += len(tgt) - 1
@@ -212,7 +212,7 @@ class Dataset():
 
             #### update data
             if len(isrc) > max_src: max_src = len(isrc)
-            if len(itgt) > max_tgt: max_tgt = len(itgt)
+            if len(iref) > max_tgt: max_tgt = len(iref)
             RAW_SRC.append(src)
             RAW_TGT.append(tgt)
             SRC.append(isrc)
