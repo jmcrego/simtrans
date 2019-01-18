@@ -298,7 +298,7 @@ class Model():
             #print("len_src_batch {}".format(len_src_batch))
             #print("tgt_batch {}".format(tgt_batch))
             #print("len_tgt_batch {}".format(len_tgt_batch))
-            print("ref_batch {}".format(ref_batch))
+            #print("ref_batch {}".format(ref_batch))
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
@@ -339,6 +339,8 @@ class Model():
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
         print("contains_lid",contains_lid)
+        print("ref {}".format(ref))
+
         if contains_lid: #delete LID tokens (length is not modified)
             ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
         else: #increase length by 1
