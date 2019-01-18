@@ -338,6 +338,8 @@ class Model():
         ### ref  is: 'LID my sentence <eos>' OR 'my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
         ### len_ref must be accordingly modified if the length of ref is changed
+        ref = list(ref)
+        len_ref = list(len_ref)
         print("contains_lid",contains_lid)
         print("ref {}".format(ref))
 
