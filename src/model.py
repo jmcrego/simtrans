@@ -304,8 +304,8 @@ class Model():
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
-                ref_batch_as_src = self.ref_as_src(ref_batch)
-                fd = self.get_feed_dict(ref_batch_as_src, len_tgt_batch)
+                tgt_batch_as_src, len_tgt_batch_as_src = self.ref_as_src(ref_batch, len_tgt_batch)
+                fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch_as_src)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             for i_sent in range(len(embed_snt_src_batch)):
@@ -327,19 +327,19 @@ class Model():
 
                 if self.config.show_idx: 
                     result.append(" ".join([str(e) for e in src_batch[i_sent]]))
-                    if bitext: result.append(" ".join([str(e) for e in ref_batch_as_src[i_sent]]))
+                    if bitext: result.append(" ".join([str(e) for e in tgt_batch_as_src[i_sent]]))
 
                 print "\t".join(result)
 
         end_time = time.time()
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time))
 
-    def ref_as_src(self, ref):
+    def ref_as_src(self, ref, len_ref):
         ### replace from ref the initial LID by <bos>
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
-        ref = np.delete(ref, 0, 1)
         ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
-        return ref
+        len_ref += np.ones_like(len_ref, dtype=int)
+        return ref, len_ref
 
     def compute_sim(self, src, tgt):
         sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
