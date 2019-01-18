@@ -332,8 +332,8 @@ class Model():
         B, S = np.array(ref).shape
         bos = np.full([B,S], self.config.voc_tgt.idx_bos, dtype=int)
         print("bos after full", bos)
-        ref = np.concatenate((bos, ref), axis=1)
-        print("ref after concatenate", ref)
+        ref = np.insert(ref,0,bos)
+        print("ref after insert", ref)
         sys.exit()
 
         len_ref += 1
