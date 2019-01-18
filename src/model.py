@@ -331,7 +331,7 @@ class Model():
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
         B, S = np.array(ref).shape
         bos = np.empty(B).fill(self.config.voc_tgt.idx_bos)
-        ref = np.concatenate(bos, ref, axis=1)
+        ref = np.concatenate((bos, ref), axis=1)
         len_tgt_batch += 1
         return ref, len_ref
 
