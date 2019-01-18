@@ -330,9 +330,7 @@ class Model():
         ### add initial <bos> to ref and increase by 1 len_tgt
         ### it only works if both sides (src/tgt) have been seen by the encoder (sharing vocabularies)
         B, S = np.array(ref).shape
-        print("B",B)
-        print("S",S)
-        bos = np.empty([B])
+        bos = np.empty([B,S])
         print(bos)
         bos = bos.fill(self.config.voc_tgt.idx_bos)
         print(bos)
