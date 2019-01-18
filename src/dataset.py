@@ -44,12 +44,16 @@ class Vocab():
         self.idx_to_tok = []
         self.idx_to_tok.append(str_unk)
         self.tok_to_idx[str_unk] = len(self.tok_to_idx) #0
+        self.idx_unk = idx_unk
         self.idx_to_tok.append(str_pad)
         self.tok_to_idx[str_pad] = len(self.tok_to_idx) #1
+        self.idx_pad = idx_pad
         self.idx_to_tok.append(str_bos)
         self.tok_to_idx[str_bos] = len(self.tok_to_idx) #2
+        self.idx_bos = idx_bos
         self.idx_to_tok.append(str_eos)
         self.tok_to_idx[str_eos] = len(self.tok_to_idx) #3
+        self.idx_eos = idx_eos
         for lid in lid_voc:
             self.idx_to_tok.append(lid)
             self.tok_to_idx[lid] = len(self.tok_to_idx)
