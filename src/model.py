@@ -332,6 +332,7 @@ class Model():
         B, S = np.array(ref).shape
         print("B",B)
         print("S",S)
+        sys.exit()
         bos = np.empty(B).fill(self.config.voc_tgt.idx_bos)
         print(bos)
         ref = np.concatenate((bos, ref), axis=1)
