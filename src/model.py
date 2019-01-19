@@ -357,8 +357,11 @@ class Model():
 ###################
 
     def initialize_session(self):
+        sys.stderr.write("A\n")
         self.sess = tf.Session()
+        sys.stderr.write("B\n")
         self.saver = tf.train.Saver(max_to_keep=20)
+        sys.stderr.write("C\n")
 
         if self.config.epoch is not None: ### restore a file for testing
             fmodel = self.config.mdir + '/epoch' + self.config.epoch
