@@ -26,6 +26,9 @@ str_bos = "<bos>"
 idx_eos = 3
 str_eos = "<eos>"
 
+idx_lid = 4
+str_lid = 'LIDisFake'
+
 class Embeddings():
 
     def __init__(self, voc, length):
@@ -42,18 +45,28 @@ class Vocab():
     def __init__(self, dict_file, lid_voc=[]):
         self.tok_to_idx = {}
         self.idx_to_tok = []
+
         self.idx_to_tok.append(str_unk)
         self.tok_to_idx[str_unk] = len(self.tok_to_idx) #0
         self.idx_unk = idx_unk
+
         self.idx_to_tok.append(str_pad)
         self.tok_to_idx[str_pad] = len(self.tok_to_idx) #1
         self.idx_pad = idx_pad
+
         self.idx_to_tok.append(str_bos)
         self.tok_to_idx[str_bos] = len(self.tok_to_idx) #2
         self.idx_bos = idx_bos
+
         self.idx_to_tok.append(str_eos)
         self.tok_to_idx[str_eos] = len(self.tok_to_idx) #3
         self.idx_eos = idx_eos
+
+        self.idx_to_tok.append(str_lid)
+        self.tok_to_idx[str_lid] = len(self.tok_to_idx) #4
+        self.idx_lid = idx_lid
+
+        #LID tokens used in train/valid set are also included
         for lid in lid_voc:
             self.idx_to_tok.append(lid)
             self.tok_to_idx[lid] = len(self.tok_to_idx)
@@ -103,7 +116,6 @@ class Dataset():
         self.seq_size = config.seq_size
         self.max_sents = config.max_sents
         self.do_shuffle = do_shuffle
-        self.tgt_contains_lid = False
         self.data = []
         self.data_batch = []
 #        self.length = 0 ### length of the data set to be used (not necessarily the whole set)
@@ -125,17 +137,20 @@ class Dataset():
             else: src = sline.split(' ')
             src.insert(0,str_bos)
             src.append(str_eos)
+            ### src is '<bos> my sentence <eos>'
 
             tgt = []
             if self.ftgt is not None:
                 tline = ft.readline().strip('\n')
                 if config.tok_tgt: tgt, _ = config.tok_tgt.tokenize(str(tline))
                 else: tgt = tline.split(' ')
-                if self.lid_add: tgt.insert(0,self.lid_voc[0])
+                ### add LIDisFake if not LID is used
+                if tgt[0] not in self.lid_voc: tgt.insert(0,idx_lid)
                 tgt.append(str_eos)
-                if len(self.data)==1: ### check (only the first line) if LID token is already added
-                    self.tgt_contains_lid = tgt[0] in self.lid_voc
+            ### tgt is 'LID my sentence <eos>'
 
+            print(src)
+            print(tgt)
             self.data.append([len(src),src,tgt])
 
         fs.close()
@@ -182,7 +197,7 @@ class Dataset():
         max_src, max_tgt = 0, 0
         for src, tgt in self.data_batch[index]:
             # src is like: <bos> my sentence <eos>
-            # tgt is like: LID my sentence <eos> OR my sentence <eos>   (LID is not added for inference)
+            # tgt is like: LID my sentence <eos>
 #            print("src",src)
 #            print("tgt",tgt)
 
@@ -201,6 +216,7 @@ class Dataset():
             if len(tgt)>0:
                 if self.tgt_contains_lid: self.ntgt += len(tgt) - 2
                 else: self.ntgt += len(tgt) - 1
+
                 for i,t in enumerate(tgt): 
                     idx_t = self.voc_tgt.get(t)
                     if idx_t == idx_unk: ntgt_unk += 1
@@ -212,7 +228,7 @@ class Dataset():
 
             #### update data
             if len(isrc) > max_src: max_src = len(isrc)
-            if len(iref) > max_tgt: max_tgt = len(iref)
+            if len(itgt) > max_tgt: max_tgt = len(itgt)
             RAW_SRC.append(src)
             RAW_TGT.append(tgt)
             SRC.append(isrc)

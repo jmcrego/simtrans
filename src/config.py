@@ -32,10 +32,9 @@ class Config():
    -src_tok          FILE : src json tokenization options for onmt tokenization
    -tgt_tok          FILE : tgt json tokenization options for onmt tokenization
 
-   -lid_voc        STRING : vocabulary of lid tags (separated by '-') to be included in tgt_voc (Ex: LIDisEnglish-LIDisFrench-LIDisGerman) [LIDisSingleLanguage]
-   -lid_add               : adds the lid tag as initial token in trn/val tgt files
-                            used only when lid_voc contains a single language
-                            and the tag is not already included in trn/val tgt files
+   -lid_voc        STRING : vocabulary of lid tags (separated by '-') to be included in tgt_voc []
+                            do not include any tag if trn/val contains a single language (no tag in trn/val files)
+                            (Ex: LIDisEnglish-LIDisFrench-LIDisGerman)
 
    Network topology:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
@@ -83,8 +82,8 @@ class Config():
         self.tgt_voc = None
         self.src_tok = None
         self.tgt_tok = None
-        self.lid_voc = ['LIDisSingleLanguage']
-        self.lid_add = False
+        self.lid_voc = []
+#        self.lid_add = False
         #will be created
         self.voc_src = None #vocabulary
         self.voc_tgt = None #vocabulary
@@ -147,7 +146,7 @@ class Config():
             elif (tok=="-src_tok" and len(argv)):        self.src_tok = argv.pop(0)
             elif (tok=="-tgt_tok" and len(argv)):        self.tgt_tok = argv.pop(0)
             elif (tok=="-lid_voc" and len(argv)):        self.lid_voc = argv.pop(0).split('-')
-            elif (tok=="-lid_add"):                      self.lid_add = True
+#            elif (tok=="-lid_add"):                      self.lid_add = True
             #network
             elif (tok=="-net_wrd_len" and len(argv)):    self.net_wrd_len = int(argv.pop(0))
             elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split('-'))
