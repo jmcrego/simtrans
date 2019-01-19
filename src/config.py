@@ -21,10 +21,10 @@ class Config():
 
  [LEARNING OPTIONS]
 *  -src_trn          FILE : src training data
-*  -tgt_trn          FILE : tgt training data (must contain lid as first token)
+*  -tgt_trn          FILE : tgt training data (must contain LID as first token)
 
 *  -src_val          FILE : src validation data
-*  -tgt_val          FILE : tgt validation data (must contain lid as first token)
+*  -tgt_val          FILE : tgt validation data (must contain LID as first token)
 
    -voc              FILE : src/tgt vocab (needed to initialize learning)
    -tok              FILE : src/tgt json onmt tokenization options 
@@ -36,7 +36,7 @@ class Config():
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
    -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop [sgd]
-   -net_lid        STRING : vocabulary of lid tags to be included in tgt_voc [LIDisSingleLanguage] (Ex: LIDisEnglish-LIDisFrench-LIDisGerman)
+   -net_lid        STRING : vocabulary of LID tags to be included in tgt_voc [LIDisSingleLanguage] (Ex: LIDisEnglish-LIDisFrench-LIDisGerman)
 
    -dropout         FLOAT : dropout ratio applided to different layers [0.3]
    -opt_lr          FLOAT : initial learning rate [1.0]                              (use 0.0002 for adam)
@@ -50,12 +50,12 @@ class Config():
  [INFERENCE OPTIONS]
 *  -epoch             INT : epoch to use ([mdir]/epoch[epoch] must exist)
 *  -src_tst          FILE : src testing data
-   -tgt_tst          FILE : tgt testing data (in training when multiple languages are used, the first token MUST be the LID)
-   -show_sim              : output similarity score (target sentence is passed through the encoder. Though, ONLY works if src/tgt sides have been seen by the encoder and share the vocabulary)
-   -show_oov              : output number of OOVs 
-   -show_emb              : output sentence embeddings
-   -show_snt              : output original sentences
-   -show_idx              : output idx of sentences
+   -tgt_tst          FILE : tgt testing data (no need to use LID token)
+   -show_sim              : output similarity score (target sentence is also passed through the encoder)
+   -show_oov              : output number of OOVs in src/tgt sentences
+   -show_emb              : output src/tgt sentence embeddings
+   -show_snt              : output original src/tgt sentences
+   -show_idx              : output idx of src/tgt sentences
 
 + Options marked with * must be set. The rest have default values.
 + If -mdir exists in learning mode, learning continues after restoring the last model

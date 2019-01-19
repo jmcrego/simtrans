@@ -133,7 +133,7 @@ class Dataset():
                 tline = ft.readline().strip('\n')
                 if config.token is not None: tgt, _ = config.token.tokenize(str(tline))
                 else: tgt = tline.split(' ')
-                ### the first field must always be the LID tag!!!
+                ### the first token is the LID tag!!!
                 ### if there is not such tag we add the first appearing in net_lid (vocabulary)
                 ### this may happen because:
                 ### 1/ inference: we will delete this first tag so doesn't matter which tag is used (but one is needed)
