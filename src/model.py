@@ -304,8 +304,8 @@ class Model():
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
-                tgt_batch_as_src = self.batch_ref_as_src(ref_batch)
-                fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch)
+                tgt_batch_as_src, len_tgt_batch_as_src = self.ref_as_src(ref_batch, len_tgt_batch)
+                fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch_as_src)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             for i_sent in range(len(embed_snt_src_batch)):
@@ -336,12 +336,13 @@ class Model():
         sents_per_sec = tst.len / (end_time - ini_time)
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => {:.2f} stoks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time, stoks_per_sec, sents_per_sec))
 
-    def batch_ref_as_src(self, ref): #batch
-        ### ref  is: 'LID my sentence <eos>'
+    def ref_as_src(self, ref, len_ref): #batch
+        ### ref  is: 'my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
-        ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
+#        ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
         ref = np.insert(ref, 0, self.config.vocab.idx_bos, axis=1) #insert idx_bos in the begining (0) of axis=1 from matrix ref
-        return ref
+        len_ref += np.ones_like(len_ref, dtype=int)
+        return ref, len_ref
 
     def sent_raw_as_src(self, raw): #raw_sentence
         for i in range(len(raw)):
