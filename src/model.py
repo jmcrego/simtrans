@@ -235,16 +235,16 @@ class Model():
             if (iter+1)%self.config.reports == 0:
                 tnow = time.time()
                 curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f} time={:.2f} sec\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr,tnow-tpre))
+                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f} time={:.2f} sec/iter\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr,(tnow-tpre)/self.config.reports))
                 tpre = tnow
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f})'.format(curr_time,curr_epoch,score.Loss))
-        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt))
-        #keep records
         self.config.tloss = score.Loss
         self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         self.config.seconds = "{:.2f}".format(time.time() - ini_time)
+        sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,self.config.seconds))
+        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt))
+        #keep records
         self.config.last_epoch += 1
         self.save_session(self.config.last_epoch)
 
@@ -334,7 +334,8 @@ class Model():
                 print "\t".join(result)
 
         end_time = time.time()
-        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time))
+        toks_per_sec = tst.nsrc / (end_time - ini_time)
+        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => ({:.2f} toks/sec) (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time))
 
     def batch_ref_as_src(self, ref): #batch
         ### ref  is: 'LID my sentence <eos>'
@@ -357,11 +358,8 @@ class Model():
 ###################
 
     def initialize_session(self):
-        sys.stderr.write("A\n")
         self.sess = tf.Session()
-        sys.stderr.write("B\n")
         self.saver = tf.train.Saver(max_to_keep=20)
-        sys.stderr.write("C\n")
 
         if self.config.epoch is not None: ### restore a file for testing
             fmodel = self.config.mdir + '/epoch' + self.config.epoch
