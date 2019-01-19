@@ -172,7 +172,7 @@ class Model():
             self.train_op = self.optimizer.apply_gradients(zip(grads, tvars))
         else:
             self.train_op = self.optimizer.minimize(self.loss)
-        sys.stderr.write("optimizer is {}\n".format(self.net_opt))
+        sys.stderr.write("optimizer is {}\n".format(self.config.net_opt))
 
 
     def build_graph(self):
