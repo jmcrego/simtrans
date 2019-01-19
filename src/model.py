@@ -154,7 +154,7 @@ class Model():
             xentropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(self.input_ref, depth=Vt, dtype=tf.float32), logits=self.out_logits) #[B, S]
             self.tmask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]            
             self.loss = tf.reduce_sum(xentropy*self.tmask) / tf.to_float(tf.reduce_sum(self.len_tgt))
-
+            sys.stderr.write("loss is xentropy\n")
 
     def add_train(self):
         if   self.config.net_opt == 'adam':     self.optimizer = tf.train.AdamOptimizer(self.lr)
@@ -172,6 +172,7 @@ class Model():
             self.train_op = self.optimizer.apply_gradients(zip(grads, tvars))
         else:
             self.train_op = self.optimizer.minimize(self.loss)
+        sys.stderr.write("optimizer is {}\n".format(self.net_opt))
 
 
     def build_graph(self):
@@ -181,6 +182,7 @@ class Model():
             self.add_decoder()
             self.add_loss()
             self.add_train()
+
 
 ###################
 ### feed_dict #####
