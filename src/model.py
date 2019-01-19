@@ -335,7 +335,7 @@ class Model():
 
         end_time = time.time()
         toks_per_sec = tst.nsrc / (end_time - ini_time)
-        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => ({:.2f} toks/sec) (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time, toks_per_sec))
+        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => {:.2f} stoks/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time, toks_per_sec))
 
     def batch_ref_as_src(self, ref): #batch
         ### ref  is: 'LID my sentence <eos>'
