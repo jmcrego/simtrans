@@ -26,15 +26,8 @@ class Config():
 *  -src_val          FILE : src validation data
 *  -tgt_val          FILE : tgt validation data (must contain lid as first token)
 
-   -src_voc          FILE : src vocab (needed to initialize learning)
-   -tgt_voc          FILE : tgt vocab (needed to initialize learning)
-
-   -src_tok          FILE : src json tokenization options for onmt tokenization
-   -tgt_tok          FILE : tgt json tokenization options for onmt tokenization
-
-   -lid_voc        STRING : vocabulary of lid tags (separated by '-') to be included in tgt_voc []
-                            do not include any tag if trn/val contains a single language (no tag in trn/val files)
-                            (Ex: LIDisEnglish-LIDisFrench-LIDisGerman)
+   -voc              FILE : src/tgt vocab (needed to initialize learning)
+   -tok              FILE : src/tgt json onmt tokenization options 
 
    Network topology:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
@@ -43,6 +36,7 @@ class Config():
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
    -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop [sgd]
+   -net_lid        STRING : vocabulary of lid tags to be included in tgt_voc [LIDisSingleLanguage] (Ex: LIDisEnglish-LIDisFrench-LIDisGerman)
 
    -dropout         FLOAT : dropout ratio applided to different layers [0.3]
    -opt_lr          FLOAT : initial learning rate [1.0]                              (use 0.0002 for adam)
@@ -56,7 +50,7 @@ class Config():
  [INFERENCE OPTIONS]
 *  -epoch             INT : epoch to use ([mdir]/epoch[epoch] must exist)
 *  -src_tst          FILE : src testing data
-   -tgt_tst          FILE : tgt testing data
+   -tgt_tst          FILE : tgt testing data (in training when multiple languages are used, the first token MUST be the LID)
    -show_sim              : output similarity score (target sentence is passed through the encoder. Though, ONLY works if src/tgt sides have been seen by the encoder and share the vocabulary)
    -show_oov              : output number of OOVs 
    -show_emb              : output sentence embeddings
@@ -78,19 +72,12 @@ class Config():
         self.tgt_trn = None
         self.src_val = None
         self.tgt_val = None
-        self.src_voc = None
-        self.tgt_voc = None
-        self.src_tok = None
-        self.tgt_tok = None
-        self.lid_voc = []
-#        self.lid_add = False
+        self.voc = None
+        self.tok = None
         #will be created
-        self.voc_src = None #vocabulary
-        self.voc_tgt = None #vocabulary
-        self.emb_src = None #embedding
-        self.emb_tgt = None #embedding
-        self.tok_src = None #onmt tokenizer
-        self.tok_tgt = None #onmt tokenizer
+        self.vocab = None #vocabulary
+        self.embed = None #embedding
+        self.token = None #onmt tokenizer
         #network
         self.net_wrd_len = 320
         self.net_conv_lens = [0]
@@ -98,6 +85,7 @@ class Config():
         self.net_sentence = 'max'
         self.net_lstm_len = 2048
         self.net_opt = 'sgd'
+        self.net_lid = ['LIDisSingleLanguage']
         #optimization
         self.dropout = 0.3
         self.opt_lr = 1.0
@@ -141,12 +129,8 @@ class Config():
             elif (tok=="-tgt_trn" and len(argv)):        self.tgt_trn = argv.pop(0)
             elif (tok=="-src_val" and len(argv)):        self.src_val = argv.pop(0)
             elif (tok=="-tgt_val" and len(argv)):        self.tgt_val = argv.pop(0)
-            elif (tok=="-src_voc" and len(argv)):        self.src_voc = argv.pop(0)
-            elif (tok=="-tgt_voc" and len(argv)):        self.tgt_voc = argv.pop(0)
-            elif (tok=="-src_tok" and len(argv)):        self.src_tok = argv.pop(0)
-            elif (tok=="-tgt_tok" and len(argv)):        self.tgt_tok = argv.pop(0)
-            elif (tok=="-lid_voc" and len(argv)):        self.lid_voc = argv.pop(0).split('-')
-#            elif (tok=="-lid_add"):                      self.lid_add = True
+            elif (tok=="-voc" and len(argv)):            self.voc = argv.pop(0)
+            elif (tok=="-tok" and len(argv)):            self.tok = argv.pop(0)
             #network
             elif (tok=="-net_wrd_len" and len(argv)):    self.net_wrd_len = int(argv.pop(0))
             elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split('-'))
@@ -154,6 +138,7 @@ class Config():
             elif (tok=="-net_sentence" and len(argv)):   self.net_sentence = argv.pop(0)
             elif (tok=="-net_lstm_len" and len(argv)):   self.net_lstm_len = int(argv.pop(0))
             elif (tok=="-net_opt" and len(argv)):        self.net_opt = argv.pop(0)
+            elif (tok=="-net_lid" and len(argv)):        self.net_lid = argv.pop(0).split('-')
             #optimization
             elif (tok=="-dropout" and len(argv)):        self.dropout = float(argv.pop(0))
             elif (tok=="-opt_lr" and len(argv)):         self.opt_lr = float(argv.pop(0))
@@ -180,6 +165,17 @@ class Config():
                 sys.stderr.write("{}".format(self.usage))
                 sys.exit()
 
+    def read_vocab_token(self):
+        ### read vocabulary
+        self.vocab = Vocab(self.mdir + "/vocab", self.net_lid)
+        ### read tokenizer
+        if os.path.exists(self.mdir + '/token'): 
+            self.tok = self.mdir + '/token'
+            with open(self.mdir + '/token') as jsonfile: 
+                tok_opt = json.load(jsonfile)
+                tok_opt["vocabulary"] = self.mdir + '/vocab'
+                self.token = build_tokenizer(tok_opt)
+
     def inference(self):
         if not self.epoch:
             sys.stderr.write("error: Missing -epoch option\n{}".format(self.usage))
@@ -187,50 +183,27 @@ class Config():
         if not os.path.exists(self.src_tst):
             sys.stderr.write('error: -src_tst file {} cannot be find\n{}'.format(self.src_tst,self.usage))
             sys.exit()
-#        if not os.path.exists(self.tgt_tst):
-#            sys.stderr.write('error: -tgt_tst file {} cannot be find\n{}'.format(self.tgt_tst,self.usage))
-#            sys.exit()
         if not os.path.exists(self.mdir + '/epoch' + self.epoch + '.index'):
             sys.stderr.write('error: -epoch file {} cannot be find\n{}'.format(self.mdir + '/epoch' + self.epoch + '.index',self.usage))
             sys.exit()
         if not os.path.exists(self.mdir + '/topology'): 
             sys.stderr.write('error: topology file: {} cannot be find\n{}'.format(self.mdir + '/topology',self.usage))
             sys.exit()
-        if not os.path.exists(self.mdir + '/vocab_src'): 
-            sys.stderr.write('error: vocab_src file: {} cannot be find\n{}'.format(self.mdir + '/vocab_src',self.usage))
+        if not os.path.exists(self.mdir + '/vocab'): 
+            sys.stderr.write('error: vocab file: {} cannot be find\n{}'.format(self.mdir + '/vocab',self.usage))
             sys.exit()
-#        if not os.path.exists(self.mdir + '/vocab_tgt'): 
-#            sys.stderr.write('error: vocab_tgt file: {} cannot be find\n{}'.format(self.mdir + '/vocab_tgt',self.usage))
-#            sys.exit()
         argv = []
+        ### options in topology file override those passed in command line
         with open(self.mdir + "/topology", 'r') as f:
             for line in f:
                 opt, val = line.split()
                 argv.append('-'+opt)
                 argv.append(val)
-        self.parse(argv) ### this overrides options passed in command line
+        self.parse(argv)
         self.dropout = 0.0
         self.seq_size = 0
-
-        ### read vocabularies
-        self.voc_src = Vocab(self.mdir + "/vocab_src")
-        if self.tgt_tst is not None:
-            self.voc_tgt = Vocab(self.mdir + "/vocab_src") ### both src/tgt sentences are passed through the encoder
-    
-        if os.path.exists(self.mdir + '/token_src'): 
-            self.src_tok = self.mdir + '/token_src'
-            with open(self.mdir + '/token_src') as jsonfile: 
-                tok_src_opt = json.load(jsonfile)
-                tok_src_opt["vocabulary"] = self.mdir + '/vocab_src'
-                self.tok_src = build_tokenizer(tok_src_opt)
-
-        if self.tgt_tok is not None:
-            if os.path.exists(self.mdir + '/token_src'): ### both src/tgt sentences are passed through the encoder
-                self.tgt_tok = self.mdir + '/token_src'
-                with open(self.mdir + '/token_src') as jsonfile: 
-                    tok_tgt_opt = json.load(jsonfile)
-                    tok_tgt_opt["vocabulary"] =  self.mdir + '/vocab_src'
-                    self.tok_tgt = build_tokenizer(tok_tgt_opt)
+        #read vocab and token
+        self.read_vocab_token()
         return  
 
     def learn(self):
@@ -253,43 +226,22 @@ class Config():
             if not os.path.exists(self.mdir + '/topology'): 
                 sys.stderr.write('error: topology file: {} cannot be find\n{}'.format(self.mdir + '/topology',self.usage))
                 sys.exit()
-            if not os.path.exists(self.mdir + '/vocab_src'): 
-                sys.stderr.write('error: vocab_src file: {} cannot be find\n{}'.format(self.mdir + '/vocab_src',self.usage))
-                sys.exit()
-            if not os.path.exists(self.mdir + '/vocab_tgt'): 
-                sys.stderr.write('error: vocab_tgt file: {} cannot be find\n{}'.format(self.mdir + '/vocab_tgt',self.usage))
+            if not os.path.exists(self.mdir + '/vocab'): 
+                sys.stderr.write('error: vocab file: {} cannot be find\n{}'.format(self.mdir + '/vocab',self.usage))
                 sys.exit()
             if not os.path.exists(self.mdir + '/checkpoint'): 
                 sys.stderr.write('error: checkpoint file: {} cannot be find\ndelete dir {} ???\n{}'.format(self.mdir + '/checkpoint', self.mdir,self.usage))
                 sys.exit()
-
+            ### options in topology file override those passed in command line
             argv = []
             with open(self.mdir + "/topology", 'r') as f:
                 for line in f:
                     opt, val = line.split()
                     argv.append('-'+opt)
                     argv.append(val)
-            self.parse(argv) ### this overrides options passed in command line
-
-            ### read vocabularies
-            self.voc_src = Vocab(self.mdir + "/vocab_src") 
-            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", self.lid_voc)
-
-            ### use existing tokenizers if exist
-            if os.path.exists(self.mdir + '/token_src'): 
-                self.src_tok = self.mdir + '/token_src'
-                with open(self.mdir + '/token_src') as jsonfile: 
-                    tok_src_opt = json.load(jsonfile)
-                    tok_src_opt["vocabulary"] = self.mdir + '/vocab_src'
-                    self.tok_src = build_tokenizer(tok_src_opt)
-
-            if os.path.exists(self.mdir + '/token_tgt'): 
-                self.tgt_tok = self.mdir + '/token_tgt'
-                with open(self.mdir + '/token_tgt') as jsonfile: 
-                    tok_tgt_opt = json.load(jsonfile)
-                    tok_tgt_opt["vocabulary"] = self.mdir + '/vocab_tgt'
-                    self.tok_tgt = build_tokenizer(tok_tgt_opt)
-
+            self.parse(argv)
+            #read vocab and token
+            self.read_vocab_token()
             ### update last epoch
             for e in range(999,0,-1):
                 if os.path.exists(self.mdir+"/epoch{}.index".format(e)): 
@@ -300,44 +252,20 @@ class Config():
         ### learning from scratch
         ###
         else:
-            if not os.path.exists(self.mdir): 
-                os.makedirs(self.mdir)
-
+            if not os.path.exists(self.mdir): os.makedirs(self.mdir)
             #copy vocabularies
-            copyfile(self.src_voc, self.mdir + "/vocab_src")
-            copyfile(self.tgt_voc, self.mdir + "/vocab_tgt")
+            copyfile(self.voc, self.mdir + "/vocab")
             #copy tokenizers if exist
-            if self.src_tok: copyfile(self.src_tok, self.mdir + "/token_src")
-            if self.tgt_tok: copyfile(self.tgt_tok, self.mdir + "/token_tgt")
-
-            ### read vocabularies
-            self.voc_src = Vocab(self.mdir + "/vocab_src") 
-            self.voc_tgt = Vocab(self.mdir + "/vocab_tgt", self.lid_voc)
-
-            ### use existing tokenizers if exist
-            if os.path.exists(self.mdir + '/token_src'): 
-                self.src_tok = self.mdir + '/token_src'
-                with open(self.mdir + '/token_src') as jsonfile: 
-                    tok_src_opt = json.load(jsonfile)
-                    tok_src_opt["vocabulary"] = self.mdir + '/vocab_src'
-                    self.tok_src = build_tokenizer(tok_src_opt)
-
-            if os.path.exists(self.mdir + '/token_tgt'): 
-                self.tgt_tok = self.mdir + '/token_tgt'
-                with open(self.mdir + '/token_tgt') as jsonfile: 
-                    tok_tgt_opt = json.load(jsonfile)
-                    tok_tgt_opt["vocabulary"] = self.mdir + '/vocab_tgt'
-                    self.tok_tgt = build_tokenizer(tok_tgt_opt)
-
+            if self.tok: copyfile(self.tok, self.mdir + "/token")
+            #read vocab and token
+            self.read_vocab_token()
             #create embeddings
-            self.emb_src = Embeddings(self.voc_src,self.net_wrd_len)
-            self.emb_tgt = Embeddings(self.voc_tgt,self.net_wrd_len)
-
+            self.embed = Embeddings(self.vocab,self.net_wrd_len)
             #write topology file
             with open(self.mdir + "/topology", 'w') as f: 
                 for opt, val in vars(self).items():
                     if not opt.startswith("net"): continue
-                    if opt.endswith("_lens"):
+                    if opt.endswith("_lens") or opt=="net_lid":
                         if len(val)>0: 
                             sval = "-".join([str(v) for v in val])
                             f.write("{} {}\n".format(opt,sval))
@@ -352,7 +280,7 @@ class Config():
         file = self.mdir + "/epoch"+str(self.last_epoch)+".config"
         with open(file,"w") as f:
             for name, val in vars(self).items():
-                if name=="usage" or name.startswith("emb_") or name.startswith("voc_") or name.startswith("tok_"): continue
+                if name=="usage" or name.startswith("embed") or name.startswith("vocab") or name.startswith("token"): continue
                 f.write("{} {}\n".format(name,val))
 
 

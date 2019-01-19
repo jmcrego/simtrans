@@ -68,13 +68,13 @@ class Model():
         K = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
         B = tf.shape(self.input_src)[0] #batch size
         Ss = tf.shape(self.input_src)[1] #seq_length
-        Vs = self.config.voc_src.length #src vocab
+        Vs = self.config.vocab.length #src vocab
         Es = self.config.net_wrd_len #src embedding size
         Hs = np.divide(self.config.net_blstm_lens, 2) #src lstm sizes (half cells for each direction)
 
-        with tf.device('/cpu:0'), tf.variable_scope("embedding_src",reuse=tf.AUTO_REUSE):
-            self.LT_src = tf.get_variable(initializer = self.embedding_initialize(Vs, Es, self.config.emb_src), dtype=tf.float32, name="embeddings_src")
-            self.embed_src = tf.nn.embedding_lookup(self.LT_src, self.input_src, name="embed_src")
+        with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE):
+            self.LT = tf.get_variable(initializer = self.embedding_initialize(Vs, Es, self.config.embed), dtype=tf.float32, name="embeddings")
+            self.embed_src = tf.nn.embedding_lookup(self.LT, self.input_src, name="embed_src")
             self.embed_src = tf.nn.dropout(self.embed_src, keep_prob=K)  #[B,Ss,Es]
 
         self.out_src = self.embed_src #[B,Ss,Es]
@@ -113,7 +113,7 @@ class Model():
         K = 1.0-self.config.dropout # keep probability for embeddings dropout Ex: 0.7
         B = tf.shape(self.input_tgt)[0] #batch size
         St = tf.shape(self.input_tgt)[1] #seq_length
-        Vt = self.config.voc_tgt.length #tgt vocab
+        Vt = self.config.vocab.length #tgt vocab
         Et = self.config.net_wrd_len #tgt embedding size
         Ht = self.config.net_lstm_len #tgt lstm size
 
@@ -122,9 +122,9 @@ class Model():
             initial_state_c = tf.zeros(tf.shape(initial_state_h))
             self.initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
 
-        with tf.device('/cpu:0'), tf.variable_scope("embedding_tgt"):
-            self.LT_tgt = tf.get_variable(initializer = self.embedding_initialize(Vt, Et, self.config.emb_tgt), dtype=tf.float32, name="embeddings_tgt")
-            self.embed_tgt = tf.nn.embedding_lookup(self.LT_tgt, self.input_tgt, name="embed_tgt") #[B, St, Et]
+        with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE):
+            self.LT = tf.get_variable(initializer = self.embedding_initialize(Vt, Et, self.config.embed), dtype=tf.float32, name="embeddings")
+            self.embed_tgt = tf.nn.embedding_lookup(self.LT, self.input_tgt, name="embed_tgt") #[B, St, Et]
             self.embed_tgt = tf.nn.dropout(self.embed_tgt, keep_prob=K)
 
         with tf.variable_scope("lstm_tgt",reuse=tf.AUTO_REUSE):
@@ -148,7 +148,7 @@ class Model():
 
 
     def add_loss(self):
-        Vt = self.config.voc_tgt.length #tgt vocab
+        Vt = self.config.vocab.length #tgt vocab
 
         with tf.name_scope("loss"):
             xentropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(self.input_ref, depth=Vt, dtype=tf.float32), logits=self.out_logits) #[B, S]
@@ -303,12 +303,10 @@ class Model():
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
-            print("A")
             if bitext:
-                tgt_batch_as_src, len_tgt_batch_as_src = self.ref_as_src(ref_batch, len_tgt_batch, tst.tgt_contains_lid)
-                fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch_as_src)
+                tgt_batch_as_src = self.batch_ref_as_src(ref_batch)
+                fd = self.get_feed_dict(tgt_batch_as_src, len_tgt_batch)
                 embed_snt_tgt_batch = self.sess.run(self.embed_snt, feed_dict=fd)
-            print("B")
 
             for i_sent in range(len(embed_snt_src_batch)):
                 result = []
@@ -325,7 +323,7 @@ class Model():
 
                 if self.config.show_snt: 
                     result.append(" ".join(raw_src_batch[i_sent]))
-                    if bitext: result.append(" ".join(raw_tgt_batch[i_sent]))
+                    if bitext: result.append(" ".join(self.sent_raw_as_src(raw_tgt_batch[i_sent])))
 
                 if self.config.show_idx: 
                     result.append(" ".join([str(e) for e in src_batch[i_sent]]))
@@ -336,30 +334,17 @@ class Model():
         end_time = time.time()
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time))
 
-    def ref_as_src(self, ref, len_ref, contains_lid):
-        ### ref  is: 'my sentence <eos>'
+    def batch_ref_as_src(self, ref): #batch
+        ### ref  is: 'LID my sentence <eos>'
         ### must be: '<bos> my sentence <eos>'
-        ### len_ref must be accordingly modified if the length of ref is changed
-#        print("ref",ref)
-#        for k,r in enumerate(ref):
-#            print("lenght[{}]={}".format(k,len(r)))
-#        tgt = np.array(ref)
-#        len_tgt = np.array(len_ref)
-#        print("ref",tgt)
-#        print("len_ref",len_tgt)
+        ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix ref
+        ref = np.insert(ref, 0, self.config.vocab.idx_bos, axis=1) #insert idx_bos in the begining (0) of axis=1 from matrix ref
+        return ref
 
-        if contains_lid: #delete LID tokens (length is not modified)
-            ref = np.delete(ref, 0, 1) ### deletes the 0-th element in axis=1 from matrix tgt
-#            print("tgt",tgt)
-        else: #increase length by 1
-            len_ref += np.ones_like(len_ref, dtype=int)
-#            print("len_tgt",len_tgt)
-
-        #insert idx_bos in the begining (0) of axis=1 from matrix tgt
-        ref = np.insert(ref, 0, self.config.voc_tgt.idx_bos, axis=1)
-#        print("tgt",tgt)
-
-        return ref, len_ref
+    def sent_raw_as_src(self, raw): #raw_sentence
+        for i in range(len(raw)):
+            raw[0] = self.config.vocab.get(self.config.vocab.idx_bos)
+        return raw
 
     def compute_sim(self, src, tgt):
         sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 

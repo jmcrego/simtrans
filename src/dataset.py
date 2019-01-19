@@ -26,9 +26,6 @@ str_bos = "<bos>"
 idx_eos = 3
 str_eos = "<eos>"
 
-idx_lid = 4
-str_lid = 'LIDisFake'
-
 class Embeddings():
 
     def __init__(self, voc, length):
@@ -42,7 +39,7 @@ class Embeddings():
 
 class Vocab():
 
-    def __init__(self, dict_file, lid_voc=[]):
+    def __init__(self, dict_file, net_lid=[]):
         self.tok_to_idx = {}
         self.idx_to_tok = []
 
@@ -62,12 +59,8 @@ class Vocab():
         self.tok_to_idx[str_eos] = len(self.tok_to_idx) #3
         self.idx_eos = idx_eos
 
-        self.idx_to_tok.append(str_lid)
-        self.tok_to_idx[str_lid] = len(self.tok_to_idx) #4
-        self.idx_lid = idx_lid
-
         #LID tokens used in train/valid set are also included
-        for lid in lid_voc:
+        for lid in net_lid:
             self.idx_to_tok.append(lid)
             self.tok_to_idx[lid] = len(self.tok_to_idx)
 
@@ -107,10 +100,8 @@ class Vocab():
 class Dataset():
 
     def __init__(self, fsrc, ftgt, config, do_shuffle):
-        self.voc_src = config.voc_src 
-        self.voc_tgt = config.voc_tgt
-        self.lid_voc = config.lid_voc
-        self.lid_add = config.lid_add
+        self.vocab = config.vocab
+        self.net_lid = config.net_lid
         self.fsrc = fsrc
         self.ftgt = ftgt
         self.seq_size = config.seq_size
@@ -118,12 +109,10 @@ class Dataset():
         self.do_shuffle = do_shuffle
         self.data = []
         self.data_batch = []
-#        self.length = 0 ### length of the data set to be used (not necessarily the whole set)
         sys.stderr.write('Reading {} {}\n'.format(self.fsrc, self.ftgt))
         ### fsrc
         if self.fsrc.endswith('.gz'): fs = gzip.open(self.fsrc, 'rb')
         else: fs = io.open(self.fsrc, 'rb')
-
         ### ftgt
         if self.ftgt is not None:
             if self.ftgt.endswith('.gz'): ft = gzip.open(self.ftgt, 'rb')
@@ -133,7 +122,7 @@ class Dataset():
         for sline in fs:
 
             sline = sline.strip('\n') 
-            if config.tok_src: src, _ = config.tok_src.tokenize(str(sline))
+            if config.token is not None: src, _ = config.token.tokenize(str(sline))
             else: src = sline.split(' ')
             src.insert(0,str_bos)
             src.append(str_eos)
@@ -142,15 +131,17 @@ class Dataset():
             tgt = []
             if self.ftgt is not None:
                 tline = ft.readline().strip('\n')
-                if config.tok_tgt: tgt, _ = config.tok_tgt.tokenize(str(tline))
+                if config.token is not None: tgt, _ = config.token.tokenize(str(tline))
                 else: tgt = tline.split(' ')
-                ### add LIDisFake if not LID is used
-                if tgt[0] not in self.lid_voc: tgt.insert(0,idx_lid)
+                ### the first field must always be the LID tag!!!
+                ### if there is not such tag we add the first appearing in net_lid (vocabulary)
+                ### this may happen because:
+                ### 1/ inference: we will delete this first tag so doesn't matter which tag is used (but one is needed)
+                ### 2/ training: a single language LID tag is used
+                if tgt[0] not in self.net_lid: tgt.insert(0,self.net_lid[0])
                 tgt.append(str_eos)
             ### tgt is 'LID my sentence <eos>'
 
-            print(src)
-            print(tgt)
             self.data.append([len(src),src,tgt])
 
         fs.close()
@@ -158,7 +149,7 @@ class Dataset():
         self.len = len(self.data)
         sys.stderr.write('(dataset contains {} examples)\n'.format(self.len))
 
-        ### sort by source length 
+        ### sort by source length to allow batches with similar number of src tokens
         if self.do_shuffle: 
             self.data.sort(key=lambda x: x[0])
 
@@ -198,37 +189,37 @@ class Dataset():
         for src, tgt in self.data_batch[index]:
             # src is like: <bos> my sentence <eos>
             # tgt is like: LID my sentence <eos>
-#            print("src",src)
-#            print("tgt",tgt)
+#            print("src: {}".format(" ".join([str(e) for e in src])))
+#            print("tgt: {}".format(" ".join([str(e) for e in tgt])))
 
-            self.nsrc += len(src) - 2
+            self.nsrc += len(src) - 2 #do not consider <bos> <eos>
             nsrc_unk = 0
             isrc = []
             for s in src: 
-                isrc.append(self.voc_src.get(s))
+                isrc.append(self.vocab.get(s))
                 if isrc[-1] == idx_unk: nsrc_unk += 1
+#                print(s,isrc[-1])
             self.nunk_src += nsrc_unk
-#            print("isrc",isrc)
+#            print("isrc:{}:".format(len(isrc)), isrc)
             
             ntgt_unk = 0
             iref = [] #must be: my sentence <eos>
-            itgt = [] #must be: LID my sentence OR my sentence (in inference, ref may be larger than tgt if tgt does not contain LID)
+            itgt = [] #must be: LID my sentence
             if len(tgt)>0:
-                if self.tgt_contains_lid: self.ntgt += len(tgt) - 2
-                else: self.ntgt += len(tgt) - 1
-
+                self.ntgt += len(tgt) - 2 #do not consider LID and <eos>
                 for i,t in enumerate(tgt): 
-                    idx_t = self.voc_tgt.get(t)
+                    idx_t = self.vocab.get(t)
+#                    print(t,idx_t)
                     if idx_t == idx_unk: ntgt_unk += 1
-                    if not self.tgt_contains_lid or i>0: iref.append(idx_t) ### do not include LID
-                    if i<len(tgt)-1: itgt.append(idx_t) ### all but the last element
+                    if i>0: iref.append(idx_t) ### do not include LID
+                    if i<len(tgt)-1: itgt.append(idx_t) ### do not include <eos>
                 self.nunk_tgt += ntgt_unk
-#            print("itgt",itgt)
-#            print("iref",iref)
-
-            #### update data
+#            print("itgt:{}:".format(len(itgt)),itgt)
+#            print("iref:{}:".format(len(iref)),iref)
+            #### update max lenghts
             if len(isrc) > max_src: max_src = len(isrc)
             if len(itgt) > max_tgt: max_tgt = len(itgt)
+            #### append data
             RAW_SRC.append(src)
             RAW_TGT.append(tgt)
             SRC.append(isrc)
@@ -237,15 +228,15 @@ class Dataset():
             NSRC_UNK.append(nsrc_unk)
             NTGT_UNK.append(ntgt_unk)
             LEN_SRC.append(len(isrc)) ### '<bos> my sentence <eos>'
-            LEN_TGT.append(len(itgt)) ### tgt: 'LID my sentence'    same length as ref: 'my sentence <bos>'
+            LEN_TGT.append(len(itgt)) ### both iref and itgt have the same length
 
         ### add padding 
         for i in range(len(SRC)):
             while len(SRC[i]) < max_src: SRC[i].append(idx_pad) #<pad>
             while len(TGT[i]) < max_tgt: TGT[i].append(idx_pad) #<pad>
             while len(REF[i]) < max_tgt: REF[i].append(idx_pad) #<pad>
-            print("TGT",TGT[i])
-            print("REF",REF[i])
+#            print("TGT",TGT[i])
+#            print("REF",REF[i])
 
         #print("BATCH max_src={} max_tgt={}".format(max_src,max_tgt))
         #print("LEN_SRC: {}".format(LEN_SRC))
