@@ -234,7 +234,7 @@ class Model():
 ### learning ######
 ###################
 
-    def debug(self, fd, src_batch, tgt_batch):
+    def debug(self, fd, src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch):
         embed_src, out_src, last_src, initial_state, embed_snt, embed_tgt, embed_snt_src_plus_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.last_src, self.initial_state, self.embed_snt, self.embed_tgt, self.embed_snt_src_plus_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
         print("Encoder")
         print("B={}".format(len(src_batch)))
@@ -256,7 +256,13 @@ class Model():
         print("shape of out_tgt = {} [B,St,Ht]".format(np.array(out_tgt).shape))
         print("shape of out_logits = {} [B,St,Vt]".format(np.array(out_logits).shape))
         print("shape of out_pred = {} [B,St]\n{}".format(np.array(out_pred).shape, out_pred))
-        sys.exit()
+        print("src[0]"," ".join([str(e) for e in raw_src_batch[0]]))
+        print("isrc[0]"," ".join([str(e) for e in src_batch[0]]))
+        print("len_src[0]",str(len_src_batch[0]))
+        print("tgt[0]"," ".join([str(e) for e in raw_tgt_batch[0]]))
+        print("itgt[0]"," ".join([str(e) for e in tgt_batch[0]]))
+        print("iref[0]"," ".join([str(e) for e in ref_batch[0]]))
+        print("len_tgt[0]",str(len_tgt_batch[0]))
 
     def run_epoch(self, train, dev, lr):
         #######################
@@ -273,7 +279,8 @@ class Model():
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             assert(np.array(tgt_batch).shape == np.array(ref_batch).shape)
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lr)
-            #self.debug(fd, src_batch, tgt_batch)
+            if iter==5: 
+                self.debug(fd, src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
@@ -337,6 +344,18 @@ class Model():
 ### inference #####
 ###################
 
+    def debug2(self, fd, src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch):
+        print("src_batch {}".format(src_batch))
+        print("len_src_batch {}".format(len_src_batch))
+        print("tgt_batch {}".format(tgt_batch))
+        print("len_tgt_batch {}".format(len_tgt_batch))
+        print("ref_batch {}".format(ref_batch))
+        embed_src, out_src, embed_snt = self.sess.run([self.embed_src, self.out_src, self.embed_snt], feed_dict=fd)
+        print("shape of embed_src = {}".format(np.array(embed_src).shape))
+        print("shape of out_src = {}".format(np.array(out_src).shape))
+        print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
+        sys.exit()
+
     def inference(self, tst):
         nbatches = (tst.len + self.config.batch_size - 1) // self.config.batch_size
 
@@ -346,17 +365,7 @@ class Model():
             else: bitext = False
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
-            #print("src_batch {}".format(src_batch))
-            #print("len_src_batch {}".format(len_src_batch))
-            #print("tgt_batch {}".format(tgt_batch))
-            #print("len_tgt_batch {}".format(len_tgt_batch))
-            #print("ref_batch {}".format(ref_batch))
-            #embed_src, out_src, embed_snt = self.sess.run([self.embed_src, self.out_src, self.embed_snt], feed_dict=fd)
-            #print("shape of embed_src = {}".format(np.array(embed_src).shape))
-            #print("shape of out_src = {}".format(np.array(out_src).shape))
-            #print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
-            #sys.exit()
-
+            #self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
