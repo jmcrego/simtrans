@@ -56,6 +56,31 @@ class Model():
 ### build graph ###
 ###################
 
+    def bi_lstm(self, layers, input, length, keep):
+        ### input are the embedded source words [B,Ss,Es]
+        last = []
+        if len(layers)>0 and layers[0]>0:
+            for i,l in enumerate(layers):
+                with tf.variable_scope("blstm_src_{}".format(i), reuse=tf.AUTO_REUSE):
+                    cell_fw = tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+                    cell_bw = tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=keep)
+                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=keep)
+                    (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=length, dtype=tf.float32)
+                    input = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,layers[i]*2]
+            last = tf.concat([last_src_fw.h, last_src_bw.h], axis=1) #[B, layers[-1]*2] (i take h since last_state is a tuple with (c,h))
+        return input, last
+
+    def bi_lstm2(self, layers, input, length, keep):
+        last = []
+        output = input
+        if len(layers)>0 and layers[0]>0:
+            cells_fw = [tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True) for l in layers]
+            cells_bw = [tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True) for l in layers]
+            output, last_src_fw, last_src_bw  = tf.contrib.rnn.stack_bidirectional_dynamic_rnn(cells_fw, cells_bw, input, sequence_length=length, dtype=tf.float32)
+            last = tf.concat([last_src_fw[-1].h, last_src_bw[-1].h], axis=1) #[B, H*2] (i take h since last_state is a tuple with (c,h))
+        return output, last
+
     def add_placeholders(self):
         self.input_src     = tf.placeholder(tf.int32, shape=[None,None], name="input_src")  # Shape: batch_size x |Fj| (sequence length)
         self.input_tgt     = tf.placeholder(tf.int32, shape=[None,None], name="input_tgt")  # Shape: batch_size x |Ei| (sequence length)
@@ -77,18 +102,22 @@ class Model():
             self.embed_src = tf.nn.embedding_lookup(self.LT, self.input_src, name="embed_src")
             self.embed_src = tf.nn.dropout(self.embed_src, keep_prob=K)  #[B,Ss,Es]
 
-        self.out_src = self.embed_src #[B,Ss,Es]
+        self.out_src, self.last_src = self.bi_lstm(Hs, self.embed_src, self.len_src, K) 
+        #out_src is [B,Ss,Hs*2] or [B,Ss,Es]
+        #last_src is [B,Hs[-1]*2] or []
+
+#        self.out_src = self.embed_src #[B,Ss,Es]
         #if not bi-lstm layers are used sentence_src is computed using either: max, mean (not last)
-        if len(Hs)>0 and Hs[0]>0:
-            for l in range(len(Hs)):
-                with tf.variable_scope("blstm_src_{}".format(l),reuse=tf.AUTO_REUSE):
-                    cell_fw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
-                    cell_bw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
-                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, input_keep_prob=K)
-                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, input_keep_prob=K)
-                    (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.out_src, sequence_length=self.len_src, dtype=tf.float32)
-                    self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,Hs*2]
-            self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1) #[B, Hs*2] (i take [1] since last_state is a tuple with (c,h))
+#        if len(Hs)>0 and Hs[0]>0:
+#            for l in range(len(Hs)):
+#                with tf.variable_scope("blstm_src_{}".format(l),reuse=tf.AUTO_REUSE):
+#                    cell_fw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+#                    cell_bw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+#                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, input_keep_prob=K)
+#                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, input_keep_prob=K)
+#                    (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.out_src, sequence_length=self.len_src, dtype=tf.float32)
+#                    self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,Hs*2]
+#            self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1) #[B, Hs*2] (i take [1] since last_state is a tuple with (c,h))
 
         with tf.variable_scope("sentence_src"):
             if self.config.net_sentence == 'last':
@@ -108,12 +137,11 @@ class Model():
                 sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
                 sys.exit()
 
-        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
-        sys.stderr.write("Total Enc parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
-        for var in tf.trainable_variables(): 
-            pars = var.get_shape().num_elements()
-            sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
-
+#        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
+#        sys.stderr.write("Total Enc parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
+#        for var in tf.trainable_variables(): 
+#            pars = var.get_shape().num_elements()
+#            sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
 
     def add_decoder(self):
         K = 1.0-self.config.dropout # keep probability for embeddings dropout Ex: 0.7
@@ -151,7 +179,6 @@ class Model():
         for var in tf.trainable_variables(): 
             pars = var.get_shape().num_elements()
             sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
-
 
     def add_loss(self):
         Vt = self.config.vocab.length #tgt vocab
@@ -207,6 +234,30 @@ class Model():
 ### learning ######
 ###################
 
+    def debug(self, fd, src_batch, tgt_batch):
+        embed_src, out_src, last_src, initial_state, embed_snt, embed_tgt, embed_snt_src_plus_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.last_src, self.initial_state, self.embed_snt, self.embed_tgt, self.embed_snt_src_plus_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
+        print("Encoder")
+        print("B={}".format(len(src_batch)))
+        print("Ss={}".format(len(src_batch[0])))
+        print("Es={}".format(self.config.net_wrd_len))
+        if (len(self.config.net_blstm_lens)): print("Hs[-1]={}".format(self.config.net_blstm_lens[-1]/2))
+        print("shape of embed_src = {} [B,Ss,Es]".format(np.array(embed_src).shape))
+        print("shape of out_src = {} [B,Ss,Hs[-1]*2] or [B,Ss,Es]".format(np.array(out_src).shape))
+        print("shape of last_src = {} [B,Hs[-1]*2]".format(np.array(last_src).shape))
+        print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
+        print("Decoder")
+        print("Ht={}".format(self.config.net_lstm_len))
+        print("St={}".format(len(tgt_batch[0])))
+        print("Et={}".format(self.config.net_wrd_len))
+        print("Vt={}".format(self.config.vocab.length))
+        print("shape of initial_state = {} [B,Ht]".format(np.array(initial_state).shape))
+        print("shape of embed_tgt = {} [B,St,Et]".format(np.array(embed_tgt).shape))
+        print("shape of embed_snt_src_plus_tgt = {} [B,St,Hs[-1]*2+Et] or [B,St,Es+Et]".format(np.array(embed_snt_src_plus_tgt).shape))
+        print("shape of out_tgt = {} [B,St,Ht]".format(np.array(out_tgt).shape))
+        print("shape of out_logits = {} [B,St,Vt]".format(np.array(out_logits).shape))
+        print("shape of out_pred = {} [B,St]\n{}".format(np.array(out_pred).shape, out_pred))
+        sys.exit()
+
     def run_epoch(self, train, dev, lr):
         #######################
         # learn on trainset ###
@@ -215,24 +266,14 @@ class Model():
         if self.config.max_sents: len_train = min(len_train, self.config.max_sents)
         nbatches = (len_train + self.config.batch_size - 1) // self.config.batch_size
         curr_epoch = self.config.last_epoch + 1
-        ini_time = time.time()
         score = Score()
         pscore = Score() ### partial score
+        ini_time = time.time()
         tpre = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             assert(np.array(tgt_batch).shape == np.array(ref_batch).shape)
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch, lr)
-            #embed_src, out_src, initial_state, embed_snt, embed_tgt, embed_snt_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.initial_state, self.embed_snt, self.embed_tgt, self.embed_snt_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
-            #print("shape of embed_src = {}".format(np.array(embed_src).shape))
-            #print("shape of out_src = {}".format(np.array(out_src).shape))
-            #print("shape of initial_state = {}".format(np.array(initial_state).shape))
-            #print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
-            #print("shape of embed_tgt = {}".format(np.array(embed_tgt).shape))
-            #print("shape of embed_snt_tgt = {}".format(np.array(embed_snt_tgt).shape))
-            #print("shape of out_tgt = {}".format(np.array(out_tgt).shape))
-            #print("shape of out_logits = {}".format(np.array(out_logits).shape))
-            #print("shape of out_pred = {}\n{}".format(np.array(out_pred).shape, out_pred))
-            #sys.exit()
+            #self.debug(fd, src_batch, tgt_batch)
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
@@ -243,12 +284,13 @@ class Model():
                 tpre = tnow
                 pscore = Score()
         curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
+        end_time = time.time()
         self.config.tloss = score.Loss
         self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        self.config.seconds = "{:.2f}".format(time.time() - ini_time)
-        sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,self.config.seconds))
+        sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,end_time-ini_time))
         sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt))
         #keep records
+        self.config.seconds = "{:.2f}".format(end_time - ini_time)
         self.config.last_epoch += 1
         self.save_session(self.config.last_epoch)
 
@@ -258,12 +300,14 @@ class Model():
         score = Score()
         if dev is not None:
             nbatches = (dev.len + self.config.batch_size - 1) // self.config.batch_size
+            ini_time = time.time()
             for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(dev):
                 fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
                 loss, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
                 score.add(loss,out_pred,ref_batch,tmask)
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.2f})'.format(curr_time,curr_epoch,score.Loss,score.Acc))
+            end_time = time.time()
+            sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.2f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,score.Acc,end_time-ini_time))
             sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc, dev.ntgt, 100.0*dev.nunk_src/dev.nsrc, 100.0*dev.nunk_tgt/dev.ntgt))
             #keep records
             self.config.vloss = score.Loss
