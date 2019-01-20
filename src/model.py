@@ -297,10 +297,9 @@ class Model():
             #print("tgt_batch {}".format(tgt_batch))
             #print("len_tgt_batch {}".format(len_tgt_batch))
             #print("ref_batch {}".format(ref_batch))
-            embed_src, out_src, initial_state, embed_snt = self.sess.run([self.embed_src, self.out_src, self.initial_state, self.embed_snt], feed_dict=fd)
+            embed_src, out_src, embed_snt = self.sess.run([self.embed_src, self.out_src, self.embed_snt], feed_dict=fd)
             print("shape of embed_src = {}".format(np.array(embed_src).shape))
             print("shape of out_src = {}".format(np.array(out_src).shape))
-            print("shape of initial_state = {}".format(np.array(initial_state).shape))
             print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
             sys.exit()
 
