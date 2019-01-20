@@ -85,7 +85,7 @@ class Model():
                     cell_fw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
                     cell_bw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
                     cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, input_keep_prob=K)
-                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, input_keep_prob=K)      
+                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, input_keep_prob=K)
                     (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.out_src, sequence_length=self.len_src, dtype=tf.float32)
                     self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,Hs*2]
             self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1) #[B, Hs*2] (i take [1] since last_state is a tuple with (c,h))
@@ -93,7 +93,7 @@ class Model():
         with tf.variable_scope("sentence_src"):
             if self.config.net_sentence == 'last':
                 if len(Hs) == 0: 
-                    sys.stderr.write("error: -net_sentence 'last' cannot be used without any -net_blstm_lens layers\n")
+                    sys.stderr.write("error: -net_sentence 'last' cannot be used with 0 -net_blstm_lens layers\n")
                     sys.exit()
                 self.embed_snt = self.last_src #[B,Hs*2]
             elif self.config.net_sentence == 'max':
@@ -103,7 +103,7 @@ class Model():
             elif self.config.net_sentence == 'mean':
                 mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, Ss] => [B, Ss, 1]
                 self.embed_snt = self.out_src * mask #masked tokens contain 0.0
-                self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B,Hs*2]
+                self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
             else:
                 sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
                 sys.exit()
@@ -113,12 +113,12 @@ class Model():
         K = 1.0-self.config.dropout # keep probability for embeddings dropout Ex: 0.7
         B = tf.shape(self.input_tgt)[0] #batch size
         St = tf.shape(self.input_tgt)[1] #seq_length
-        Vt = self.config.vocab.length #tgt vocab
-        Et = self.config.net_wrd_len #tgt embedding size
+        Vt = self.config.vocab.length #tgt vocab (same as src)
+        Et = self.config.net_wrd_len #tgt embedding size (same as src)
         Ht = self.config.net_lstm_len #tgt lstm size
 
         with tf.variable_scope("embed_snt2lstm_initial",reuse=tf.AUTO_REUSE):
-            initial_state_h = tf.layers.dense(self.embed_snt, Ht, use_bias=False) # Hs*2 => Ht
+            initial_state_h = tf.layers.dense(self.embed_snt, Ht, use_bias=False) # Hs*2 or Es => Ht
             initial_state_c = tf.zeros(tf.shape(initial_state_h))
             self.initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
 
@@ -130,7 +130,7 @@ class Model():
         with tf.variable_scope("lstm_tgt",reuse=tf.AUTO_REUSE):
             self.embed_snt_src = tf.expand_dims(self.embed_snt, 1) #[B,Hs*2] or [B,Es] => [B,1,Hs*2] or [B,1,Es]
             self.embed_snt_src = tf.tile(self.embed_snt_src, [1, St, 1]) #[B,St,Hs*2] or [B,St,Es]
-            self.embed_snt_src_plus_tgt = tf.concat([self.embed_snt_src, self.embed_tgt], 2) #[B, St, Hs*2+Et] or [B, St, Es+Et]
+            self.embed_snt_src_plus_tgt = tf.concat([self.embed_snt_src, self.embed_tgt], 2) #[B,St,Hs*2+Et] or [B,St,Es+Et]
             cell = tf.contrib.rnn.LSTMCell(Ht)
             self.out_tgt, state_tgt = tf.nn.dynamic_rnn(cell, self.embed_snt_src_plus_tgt, initial_state=self.initial_state, sequence_length=self.len_tgt, dtype=tf.float32)
             ### self.embed_tgt is like: LID my sentence <pad> ... (LID is like a bos that also encodes the language to produce)
@@ -292,13 +292,20 @@ class Model():
 
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
-            if len(tgt_batch[0]): bitext = True
-            else: bitext = False
             #print("src_batch {}".format(src_batch))
             #print("len_src_batch {}".format(len_src_batch))
             #print("tgt_batch {}".format(tgt_batch))
             #print("len_tgt_batch {}".format(len_tgt_batch))
             #print("ref_batch {}".format(ref_batch))
+            embed_src, out_src, initial_state, embed_snt = self.sess.run([self.embed_src, self.out_src, self.initial_state, self.embed_snt], feed_dict=fd)
+            print("shape of embed_src = {}".format(np.array(embed_src).shape))
+            print("shape of out_src = {}".format(np.array(out_src).shape))
+            print("shape of initial_state = {}".format(np.array(initial_state).shape))
+            print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
+            sys.exit()
+
+            if len(tgt_batch[0]): bitext = True
+            else: bitext = False
 
             fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
