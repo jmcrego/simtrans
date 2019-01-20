@@ -52,10 +52,6 @@ class Model():
             m = tf.random_uniform([NS, ES], minval=-0.1, maxval=0.1)
         return m
 
-###################
-### build graph ###
-###################
-
     def bi_lstm(self, layers, input, length, keep):
         ### input are the embedded source words [B,Ss,Es]
         last = []
@@ -81,6 +77,33 @@ class Model():
             last = tf.concat([last_src_fw[-1].h, last_src_bw[-1].h], axis=1) #[B, H*2] (i take h since last_state is a tuple with (c,h))
         return output, last
 
+    def embed_sentence(self, out_src, last_src, len_src):
+        if self.config.net_sentence == 'last':
+            if len(Hs) == 0: 
+                sys.stderr.write("error: -net_sentence 'last' cannot be used with 0 -net_blstm_lens layers\n")
+                sys.exit()
+            return last_src #[B,Hs[-1]*2]
+
+        if self.config.net_sentence == 'max':
+            mask = tf.expand_dims(tf.sequence_mask(len_src, dtype=tf.float32), 2)
+            embed_snt = out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
+            embed_snt = tf.reduce_max(embed_snt, axis=1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
+            return embed_snt
+
+        elif self.config.net_sentence == 'mean':
+            mask = tf.expand_dims(tf.sequence_mask(len_src, dtype=tf.float32), 2) #[B, Ss] => [B, Ss, 1]
+            embed_snt = out_src * mask #masked tokens contain 0.0
+            embed_snt = tf.reduce_sum(embed_snt, axis=1) / tf.expand_dims(tf.to_float(len_src), 1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
+            return embed_snt
+
+        sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
+        sys.exit()
+
+
+###################
+### build graph ###
+###################
+
     def add_placeholders(self):
         self.input_src     = tf.placeholder(tf.int32, shape=[None,None], name="input_src")  # Shape: batch_size x |Fj| (sequence length)
         self.input_tgt     = tf.placeholder(tf.int32, shape=[None,None], name="input_tgt")  # Shape: batch_size x |Ei| (sequence length)
@@ -105,37 +128,8 @@ class Model():
         self.out_src, self.last_src = self.bi_lstm(Hs, self.embed_src, self.len_src, K) 
         #out_src is [B,Ss,Hs*2] or [B,Ss,Es]
         #last_src is [B,Hs[-1]*2] or []
-
-#        self.out_src = self.embed_src #[B,Ss,Es]
-        #if not bi-lstm layers are used sentence_src is computed using either: max, mean (not last)
-#        if len(Hs)>0 and Hs[0]>0:
-#            for l in range(len(Hs)):
-#                with tf.variable_scope("blstm_src_{}".format(l),reuse=tf.AUTO_REUSE):
-#                    cell_fw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
-#                    cell_bw = tf.contrib.rnn.LSTMCell(Hs[l], initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
-#                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, input_keep_prob=K)
-#                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, input_keep_prob=K)
-#                    (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.out_src, sequence_length=self.len_src, dtype=tf.float32)
-#                    self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,Hs*2]
-#            self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1) #[B, Hs*2] (i take [1] since last_state is a tuple with (c,h))
-
-        with tf.variable_scope("sentence_src"):
-            if self.config.net_sentence == 'last':
-                if len(Hs) == 0: 
-                    sys.stderr.write("error: -net_sentence 'last' cannot be used with 0 -net_blstm_lens layers\n")
-                    sys.exit()
-                self.embed_snt = self.last_src #[B,Hs*2]
-            elif self.config.net_sentence == 'max':
-                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2)
-                self.embed_snt = self.out_src * mask + (1-mask) * tf.float32.min #masked tokens contain -Inf
-                self.embed_snt = tf.reduce_max(self.embed_snt, axis=1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
-            elif self.config.net_sentence == 'mean':
-                mask = tf.expand_dims(tf.sequence_mask(self.len_src, dtype=tf.float32), 2) #[B, Ss] => [B, Ss, 1]
-                self.embed_snt = self.out_src * mask #masked tokens contain 0.0
-                self.embed_snt = tf.reduce_sum(self.embed_snt, axis=1) / tf.expand_dims(tf.to_float(self.len_src), 1) #[B,Hs*2] or [B,Es] if not bi-lstm layers
-            else:
-                sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
-                sys.exit()
+        self.embed_snt = self.embed_sentence(self.out_src, self.last_src, self.len_src)
+        #embed_snt is [B,Hs*2] or [B,Es] if not bi-lstm layers
 
 #        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
 #        sys.stderr.write("Total Enc parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
