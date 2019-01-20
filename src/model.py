@@ -297,16 +297,17 @@ class Model():
             #print("tgt_batch {}".format(tgt_batch))
             #print("len_tgt_batch {}".format(len_tgt_batch))
             #print("ref_batch {}".format(ref_batch))
+            if len(tgt_batch[0]): bitext = True
+            else: bitext = False
+
+            fd = self.get_feed_dict(src_batch, len_src_batch)
+
             embed_src, out_src, embed_snt = self.sess.run([self.embed_src, self.out_src, self.embed_snt], feed_dict=fd)
             print("shape of embed_src = {}".format(np.array(embed_src).shape))
             print("shape of out_src = {}".format(np.array(out_src).shape))
             print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
             sys.exit()
 
-            if len(tgt_batch[0]): bitext = True
-            else: bitext = False
-
-            fd = self.get_feed_dict(src_batch, len_src_batch)
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
             if bitext:
