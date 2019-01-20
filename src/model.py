@@ -108,6 +108,12 @@ class Model():
                 sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
                 sys.exit()
 
+        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
+        sys.stderr.write("Total Enc parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
+        for var in tf.trainable_variables(): 
+            pars = var.get_shape().num_elements()
+            sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
+
 
     def add_decoder(self):
         K = 1.0-self.config.dropout # keep probability for embeddings dropout Ex: 0.7
@@ -292,21 +298,20 @@ class Model():
 
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
+            if len(tgt_batch[0]): bitext = True
+            else: bitext = False
+
+            fd = self.get_feed_dict(src_batch, len_src_batch)
             #print("src_batch {}".format(src_batch))
             #print("len_src_batch {}".format(len_src_batch))
             #print("tgt_batch {}".format(tgt_batch))
             #print("len_tgt_batch {}".format(len_tgt_batch))
             #print("ref_batch {}".format(ref_batch))
-            if len(tgt_batch[0]): bitext = True
-            else: bitext = False
-
-            fd = self.get_feed_dict(src_batch, len_src_batch)
-
-            embed_src, out_src, embed_snt = self.sess.run([self.embed_src, self.out_src, self.embed_snt], feed_dict=fd)
-            print("shape of embed_src = {}".format(np.array(embed_src).shape))
-            print("shape of out_src = {}".format(np.array(out_src).shape))
-            print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
-            sys.exit()
+            #embed_src, out_src, embed_snt = self.sess.run([self.embed_src, self.out_src, self.embed_snt], feed_dict=fd)
+            #print("shape of embed_src = {}".format(np.array(embed_src).shape))
+            #print("shape of out_src = {}".format(np.array(out_src).shape))
+            #print("shape of embed_snt = {}".format(np.array(embed_snt).shape))
+            #sys.exit()
 
             embed_snt_src_batch = self.sess.run(self.embed_snt, feed_dict=fd)
 
