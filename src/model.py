@@ -48,7 +48,7 @@ class Model():
         if embeddings is not None: 
             m = embeddings.matrix
         else:
-            sys.stderr.write("embeddings randomly initialized\n")
+            sys.stderr.write("embeddings randomly initialized [{},{}]\n".format(NS,ES))
             m = tf.random_uniform([NS, ES], minval=-0.1, maxval=0.1)
         return m
 
