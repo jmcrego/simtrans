@@ -17,7 +17,7 @@ usage = """usage: {} -db FILE -query FILE [-c INT] [-k INT] [-s FLOAT] [-gpu] [-
    -c      INT : column containing vector representations (starting by 0) [0]
    -k      INT : show the k nearest sentences [1]
    -s    FLOAT : minimum similarity to consider two sentences near [0.0]
-   -gpu        : use gpu (passed through CUDA_VISIBLE+DEVICES)
+   -gpu        : use gpu (passed through CUDA_VISIBLE_DEVICES)
    -h          : this help
 This scripts finds in file -db the -k nearest sentences to those in file -query. 
 Distance is computed as inner product of the vectors representing each sentence pair.""".format(sys.argv.pop(0))
