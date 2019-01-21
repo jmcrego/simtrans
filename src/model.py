@@ -79,6 +79,9 @@ class Model():
 
     def embed_sentence(self, out_src, last_src, len_src):
         if self.config.net_sentence == 'last':
+            if len(self.config.net_blstm_lens) == 0: 
+                sys.stderr.write("error: -net_sentence 'last' cannot be used with 0 -net_blstm_lens layers\n")
+                sys.exit()
             return last_src #[B,Hs[-1]*2]
 
         if self.config.net_sentence == 'max':
@@ -125,10 +128,6 @@ class Model():
         self.out_src, self.last_src = self.bi_lstm(Hs, self.embed_src, self.len_src, K) 
         #out_src is [B,Ss,Hs*2] or [B,Ss,Es]
         #last_src is [B,Hs[-1]*2] or []
-
-        if len(Hs) == 0: 
-            sys.stderr.write("error: -net_sentence 'last' cannot be used with 0 -net_blstm_lens layers\n")
-            sys.exit()
         self.embed_snt = self.embed_sentence(self.out_src, self.last_src, self.len_src)
         #embed_snt is [B,Hs*2] or [B,Es] if not bi-lstm layers
 
