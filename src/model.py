@@ -59,8 +59,8 @@ class Model():
             for i,l in enumerate(layers):
                 with tf.variable_scope("blstm_src_{}".format(i), reuse=tf.AUTO_REUSE):
                     cell_fw = tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
-                    cell_bw = tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
                     cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=keep)
+                    cell_bw = tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
                     cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=keep)
                     (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=length, dtype=tf.float32)
                     input = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,layers[i]*2]
@@ -80,7 +80,7 @@ class Model():
     def embed_sentence(self, out_src, last_src, len_src):
         if self.config.net_sentence == 'last':
             if len(self.config.net_blstm_lens) == 0: 
-                sys.stderr.write("error: -net_sentence 'last' cannot be used with 0 -net_blstm_lens layers\n")
+                sys.stderr.write("error: -net_sentence 'last' cannot be used with -net_blstm_lens 0 layers\n")
                 sys.exit()
             return last_src #[B,Hs[-1]*2]
 
@@ -377,7 +377,7 @@ class Model():
                     if bitext: result.append("{}".format(ntgt_unk_batch[i_sent]))
 
                 if self.config.show_emb: 
-                    result.append(" ".join(["{:.6f}".format(e) for e in embed_snt_src_batch[i_sent]]))
+                    result.append(" ".join(["{}".format(e) for e in embed_snt_src_batch[i_sent]]))
                     if bitext: result.append(" ".join(["{:.6f}".format(e) for e in embed_snt_tgt_batch[i_sent]]))
 
                 if self.config.show_snt: 

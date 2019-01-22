@@ -52,7 +52,7 @@ class Config():
 *  -src_tst          FILE : src testing data
    -tgt_tst          FILE : tgt testing data (no need to use LID token)
    -show_sim              : output similarity score (target sentence is also passed through the encoder)
-   -show_oov              : output number of OOVs in src/tgt sentences
+   -show_oov              : output number of OOVs in src/tgt OOVs 
    -show_emb              : output src/tgt sentence embeddings
    -show_snt              : output original src/tgt sentences
    -show_idx              : output idx of src/tgt sentences
