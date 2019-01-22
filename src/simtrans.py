@@ -14,13 +14,16 @@ def main():
     model.build_graph()
     model.initialize_session()
 
-    if config.src_trn and config.tgt_trn and config.src_val and config.tgt_val:
-        trn = Dataset(config.src_trn, config.tgt_trn, config, do_shuffle=True)
-        val = Dataset(config.src_val, config.tgt_val, config, do_shuffle=False)
+    if len(config.src_trn) and len(config.tgt_trn) and len(config.tgt_trn_lid) and len(config.src_val) and len(config.tgt_val) and len(config.tgt_val_lid):
+        trn = Dataset(config.src_trn, config.tgt_trn, config.tgt_trn_lid, config)
+        val = Dataset(config.src_val, config.tgt_val, config.tgt_val_lid, config)
         model.learn(trn, val, config.n_epochs)
 
     elif config.src_tst:
-        tst = Dataset(config.src_tst, config.tgt_tst, config, do_shuffle=False)
+        if config.tgt_tst is None: 
+            tst = Dataset([config.src_tst], [], [], config)
+        else:
+            tst = Dataset([config.src_tst], [config.tgt_tst], [], config)
         model.inference(tst)
 
     model.close_session()

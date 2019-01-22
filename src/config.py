@@ -14,29 +14,31 @@ class Config():
     def __init__(self, argv):
         self.usage="""usage: {}
 *  -mdir              DIR : directory to save/restore models
-   -seq_size          INT : sentences larger than this number of src/tgt words are filtered out [50]
    -batch_size        INT : number of examples per batch [32]
    -seed              INT : seed for randomness [12345]
    -h                     : this message
 
  [LEARNING OPTIONS]
-*  -src_trn          FILE : src training data
-*  -tgt_trn          FILE : tgt training data (must contain LID as first token)
+*  -src_trn          FILE : src training files (comma-separated)
+*  -tgt_trn          FILE : tgt training files (comma-separated)
+*  -tgt_trn_lid      FILE : lid of tgt training files (comma-separated)
 
-*  -src_val          FILE : src validation data
-*  -tgt_val          FILE : tgt validation data (must contain LID as first token)
+*  -src_val          FILE : src validation files (comma-separated)
+*  -tgt_val          FILE : tgt validation files (comma-separated)
+*  -tgt_val_lid      FILE : lid of tgt validation files (comma-separated)
 
    -voc              FILE : src/tgt vocab (needed to initialize learning)
    -tok              FILE : src/tgt json onmt tokenization options 
 
+   -seq_size          INT : src sentences larger than this number of words are filtered out [50]
+
    Network topology:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
-   -net_conv_lens  STRING : kernel sizes of src convolutional layers [0] (not used)
-   -net_blstm_lens STRING : units of src bi-lstm layers [1024-1024-1024] (3 layers with 512 cells for each direction)
+   -net_blstm_lens STRING : units of src bi-lstm layers [1024,1024,1024] (3 layers with 512 cells for each direction)
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
    -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop [sgd]
-   -net_lid        STRING : vocabulary of LID tags to be included in tgt_voc [LIDisSingleLanguage] (Ex: LIDisEnglish-LIDisFrench-LIDisGerman)
+   -net_lid        STRING : vocabulary of LID tags to be included in tgt_voc [] (Ex: LIDisEnglish,LIDisFrench,LIDisGerman)
 
    -dropout         FLOAT : dropout ratio applided to different layers [0.3]
    -opt_lr          FLOAT : initial learning rate [1.0]                              (use 0.0002 for adam)
@@ -49,8 +51,9 @@ class Config():
 
  [INFERENCE OPTIONS]
 *  -epoch             INT : epoch to use ([mdir]/epoch[epoch] must exist)
-*  -src_tst          FILE : src testing data
-   -tgt_tst          FILE : tgt testing data (no need to use LID token)
+*  -src_tst          FILE : src testing file
+   -tgt_tst          FILE : tgt testing file
+
    -show_sim              : output similarity score (target sentence is also passed through the encoder)
    -show_oov              : output number of OOVs in src/tgt OOVs 
    -show_emb              : output src/tgt sentence embeddings
@@ -68,10 +71,11 @@ class Config():
         self.batch_size = 32
         self.seed = 12345
         #files
-        self.src_trn = None
-        self.tgt_trn = None
-        self.src_val = None
-        self.tgt_val = None
+        self.src_trn = []
+        self.tgt_trn = []
+        self.tgt_trn_lid = []
+        self.src_val = []
+        self.tgt_val_lid = []
         self.voc = None
         self.tok = None
         #will be created
@@ -80,12 +84,11 @@ class Config():
         self.token = None #onmt tokenizer
         #network
         self.net_wrd_len = 320
-        self.net_conv_lens = [0]
         self.net_blstm_lens = [1024, 1024, 1024]
         self.net_sentence = 'max'
         self.net_lstm_len = 2048
         self.net_opt = 'sgd'
-        self.net_lid = ['LIDisSingleLanguage']
+        self.net_lid = []
         #optimization
         self.dropout = 0.3
         self.opt_lr = 1.0
@@ -114,7 +117,7 @@ class Config():
             sys.exit()
         if len(self.mdir)>1 and self.mdir[-1]=="/": self.mdir = self.mdir[0:-1] ### delete ending '/'
         if self.src_tst: self.inference()
-        elif self.src_trn and self.tgt_trn and self.src_val and self.tgt_val: self.learn()
+        elif len(self.src_trn) and len(self.tgt_trn) and len(self.tgt_trn_lid) and len(self.src_val) and len(self.tgt_val) and len(self.tgt_val_lid): self.learn()
         return
 
     def parse(self, argv):
@@ -125,20 +128,21 @@ class Config():
             elif (tok=="-batch_size" and len(argv)):     self.batch_size = int(argv.pop(0))
             elif (tok=="-seed" and len(argv)):           self.seed = int(argv.pop(0))
             #files
-            elif (tok=="-src_trn" and len(argv)):        self.src_trn = argv.pop(0)
-            elif (tok=="-tgt_trn" and len(argv)):        self.tgt_trn = argv.pop(0)
-            elif (tok=="-src_val" and len(argv)):        self.src_val = argv.pop(0)
-            elif (tok=="-tgt_val" and len(argv)):        self.tgt_val = argv.pop(0)
+            elif (tok=="-src_trn" and len(argv)):        self.src_trn = argv.pop(0).split(',')
+            elif (tok=="-tgt_trn" and len(argv)):        self.tgt_trn = argv.pop(0).split(',')
+            elif (tok=="-tgt_trn_lid" and len(argv)):    self.tgt_trn_lid = argv.pop(0).split(',')
+            elif (tok=="-src_val" and len(argv)):        self.src_val = argv.pop(0).split(',')
+            elif (tok=="-tgt_val" and len(argv)):        self.tgt_val = argv.pop(0).split(',')
+            elif (tok=="-tgt_val_lid" and len(argv)):    self.tgt_val_lid = argv.pop(0).split(',')
             elif (tok=="-voc" and len(argv)):            self.voc = argv.pop(0)
             elif (tok=="-tok" and len(argv)):            self.tok = argv.pop(0)
             #network
             elif (tok=="-net_wrd_len" and len(argv)):    self.net_wrd_len = int(argv.pop(0))
-            elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split('-'))
-            elif (tok=="-net_conv_lens" and len(argv)):  self.net_conv_lens = map(int, argv.pop(0).split('-'))
+            elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split(','))
             elif (tok=="-net_sentence" and len(argv)):   self.net_sentence = argv.pop(0)
             elif (tok=="-net_lstm_len" and len(argv)):   self.net_lstm_len = int(argv.pop(0))
             elif (tok=="-net_opt" and len(argv)):        self.net_opt = argv.pop(0)
-            elif (tok=="-net_lid" and len(argv)):        self.net_lid = argv.pop(0).split('-')
+            elif (tok=="-net_lid" and len(argv)):        self.net_lid = argv.pop(0).split(',')
             #optimization
             elif (tok=="-dropout" and len(argv)):        self.dropout = float(argv.pop(0))
             elif (tok=="-opt_lr" and len(argv)):         self.opt_lr = float(argv.pop(0))
@@ -180,9 +184,6 @@ class Config():
         if not self.epoch:
             sys.stderr.write("error: Missing -epoch option\n{}".format(self.usage))
             sys.exit()
-        if not os.path.exists(self.src_tst):
-            sys.stderr.write('error: -src_tst file {} cannot be find\n{}'.format(self.src_tst,self.usage))
-            sys.exit()
         if not os.path.exists(self.mdir + '/epoch' + self.epoch + '.index'):
             sys.stderr.write('error: -epoch file {} cannot be find\n{}'.format(self.mdir + '/epoch' + self.epoch + '.index',self.usage))
             sys.exit()
@@ -192,33 +193,14 @@ class Config():
         if not os.path.exists(self.mdir + '/vocab'): 
             sys.stderr.write('error: vocab file: {} cannot be find\n{}'.format(self.mdir + '/vocab',self.usage))
             sys.exit()
-        argv = []
-        ### options in topology file override those passed in command line
-        with open(self.mdir + "/topology", 'r') as f:
-            for line in f:
-                opt, val = line.split()
-                argv.append('-'+opt)
-                argv.append(val)
+        argv = self.read_topology()
         self.parse(argv)
         self.dropout = 0.0
-        self.seq_size = 0
         #read vocab and token
         self.read_vocab_token()
         return  
 
     def learn(self):
-        if not os.path.exists(self.src_trn):
-            sys.stderr.write('error: -src_trn file {} cannot be find\n{}'.format(self.src_trn,self.usage))
-            sys.exit()
-        if not os.path.exists(self.tgt_trn):
-            sys.stderr.write('error: -tgt_trn file {} cannot be find\n{}'.format(self.tgt_trn,self.usage))
-            sys.exit()
-        if not os.path.exists(self.src_val):
-            sys.stderr.write('error: -src_val file {} cannot be find\n{}'.format(self.src_val,self.usage))
-            sys.exit()
-        if not os.path.exists(self.tgt_val):
-            sys.stderr.write('error: -tgt_val file {} cannot be find\n{}'.format(self.tgt_val,self.usage))
-            sys.exit()
         ###
         ### continuation
         ###
@@ -233,12 +215,7 @@ class Config():
                 sys.stderr.write('error: checkpoint file: {} cannot be find\ndelete dir {} ???\n{}'.format(self.mdir + '/checkpoint', self.mdir,self.usage))
                 sys.exit()
             ### options in topology file override those passed in command line
-            argv = []
-            with open(self.mdir + "/topology", 'r') as f:
-                for line in f:
-                    opt, val = line.split()
-                    argv.append('-'+opt)
-                    argv.append(val)
+            argv = self.read_topology()
             self.parse(argv)
             #read vocab and token
             self.read_vocab_token()
@@ -265,9 +242,9 @@ class Config():
             with open(self.mdir + "/topology", 'w') as f: 
                 for opt, val in vars(self).items():
                     if not opt.startswith("net"): continue
-                    if opt.endswith("_lens") or opt=="net_lid":
+                    if opt=="net_blstm_lens" or opt=="net_lid":
                         if len(val)>0: 
-                            sval = "-".join([str(v) for v in val])
+                            sval = ",".join([str(v) for v in val])
                             f.write("{} {}\n".format(opt,sval))
                     else:
                         f.write("{} {}\n".format(opt,val))
@@ -283,5 +260,12 @@ class Config():
                 if name=="usage" or name.startswith("embed") or name.startswith("vocab") or name.startswith("token"): continue
                 f.write("{} {}\n".format(name,val))
 
-
+    def read_topology(self):
+        argv = []
+        with open(self.mdir + "/topology", 'r') as f:
+            for line in f:
+                opt, val = line.split()
+                argv.append('-'+opt)
+                argv.append(val)
+        return argv
 

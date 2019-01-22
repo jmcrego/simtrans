@@ -99,58 +99,96 @@ class Vocab():
 
 class Dataset():
 
-    def __init__(self, fsrc, ftgt, config, do_shuffle):
+    def __init__(self, fSRC, fTGT, LID, config):
         self.vocab = config.vocab
-        self.net_lid = config.net_lid
-        self.fsrc = fsrc
-        self.ftgt = ftgt
-        self.seq_size = config.seq_size
         self.max_sents = config.max_sents
-        self.do_shuffle = do_shuffle
         self.data = []
         self.data_batch = []
-        sys.stderr.write('Reading {} {}\n'.format(self.fsrc, self.ftgt))
-        ### fsrc
-        if self.fsrc.endswith('.gz'): fs = gzip.open(self.fsrc, 'rb')
-        else: fs = io.open(self.fsrc, 'rb')
-        ### ftgt
-        if self.ftgt is not None:
-            if self.ftgt.endswith('.gz'): ft = gzip.open(self.ftgt, 'rb')
-            else: ft = io.open(self.ftgt, 'rb')
 
-        ### first loop to read sentences and sort by length
-        for sline in fs:
+        ### check number of fSRC/fTGT/LID parameters are correct
+        if len(fSRC) and len(fSRC)==len(fTGT) and len(fSRC)==len(LID): 
+            self.is_inference = False ### training
+            self.is_bitext = True
+        elif len(fSRC) and len(fSRC)==len(fTGT) and len(LID)==0:       
+            self.is_inference = True ### inference with src/tgt
+            self.is_bitext = True
+        elif len(fSRC) and len(fTGT)==0 and len(LID)==0:               
+            self.is_inference = True ### inference with src
+            self.is_bitext = False
+        else:
+            sys.stderr.write('error: bad number of input files {} {} {}\n'.format(len(fSRC),len(fTGT),len(LID)))
+            sys.exit()
 
-            sline = sline.strip('\n') 
-            if config.token is not None: src, _ = config.token.tokenize(str(sline))
-            else: src = sline.split(' ')
-            src.insert(0,str_bos)
-            src.append(str_eos)
-            ### src is '<bos> my sentence <eos>'
+        ### check lid's exist in vocab
+        for lid in LID:
+            if not self.vocab.exists(lid):
+                sys.stderr.write('error: LID={} does not exists in vocab\n'.format(lid))
+                sys.exit()
 
-            tgt = []
-            if self.ftgt is not None:
-                tline = ft.readline().strip('\n')
-                if config.token is not None: tgt, _ = config.token.tokenize(str(tline))
-                else: tgt = tline.split(' ')
-                ### the first token is the LID tag!!!
-                ### if there is not such tag we add the first appearing in net_lid (vocabulary)
-                ### this may happen because:
-                ### 1/ inference: we will delete this first tag so doesn't matter which tag is used (but one is needed)
-                ### 2/ training: a single language LID tag is used
-                if tgt[0] not in self.net_lid: tgt.insert(0,self.net_lid[0])
-                tgt.append(str_eos)
-            ### tgt is 'LID my sentence <eos>'
+        for ifile in range(len(fSRC)):
+            fsrc = fSRC[ifile]
+            if not os.path.exists(fsrc):
+                sys.stderr.write('error: cannot find src file: {}\n'.format(fsrc))
+                sys.exit()
+            sys.stderr.write('Reading {}\n'.format(fsrc))
+            if len(fTGT): 
+                ftgt = fTGT[ifile]
+                if not os.path.exists(ftgt):
+                    sys.stderr.write('error: cannot find tgt file: {}\n'.format(ftgt))
+                    sys.exit()
+                sys.stderr.write('Reading {}\n'.format(ftgt))
+            if len(LID): 
+                str_lid = LID[ifile]
+                sys.stderr.write('LID {}\n'.format(str_lid))
 
-            self.data.append([len(src),src,tgt])
+            ### fsrc
+            if fsrc.endswith('.gz'): fs = gzip.open(fsrc, 'rb')
+            else: fs = io.open(fsrc, 'rb')
+            ### ftgt
+            if self.is_bitext:
+                if ftgt.endswith('.gz'): ft = gzip.open(ftgt, 'rb')
+                else: ft = io.open(ftgt, 'rb')
 
-        fs.close()
-        if self.ftgt is not None: ft.close()
+            ### first loop to read sentences and sort by length
+            for sline in fs:
+
+                sline = sline.strip('\n') 
+                if config.token is not None: 
+                    src, _ = config.token.tokenize(str(sline))
+                else: 
+                    src = sline.split(' ')
+                src.insert(0,str_bos)
+                src.append(str_eos)
+                ### src is '<bos> my sentence <eos>'
+                #print("SRC: "+" ".join([str(e) for e in src]))
+
+                if self.is_bitext: 
+                    tline = ft.readline().strip('\n')
+                    if config.token is not None: 
+                        tgt, _ = config.token.tokenize(str(tline))
+                    else: 
+                        tgt = tline.split(' ')
+                    if self.is_inference: 
+                        tgt.insert(0,str_bos)
+                    else: ### is inference
+                        tgt.insert(0,str_lid)
+                    tgt.append(str_eos)
+                else:
+                    tgt = []
+                ### tgt is 'LID my sentence <eos>' OR '<bos> my sentence <eos>'
+                #print("TGT: "+" ".join([str(e) for e in tgt]))
+
+                if self.is_inference or config.seq_size==0 or len(src)-2<=config.seq_size:
+                    self.data.append([len(src),src,tgt])
+    
+            fs.close()
+            if self.is_bitext: ft.close()
+
         self.len = len(self.data)
         sys.stderr.write('(dataset contains {} examples)\n'.format(self.len))
 
         ### sort by source length to allow batches with similar number of src tokens
-        if self.do_shuffle: 
+        if not self.is_inference: 
             self.data.sort(key=lambda x: x[0])
 
         ### second loop to build data_batch
@@ -175,7 +213,7 @@ class Dataset():
         self.nunk_tgt = 0
         ### every iteration i get shuffled data examples if do_shuffle
         indexs = [i for i in range(len(self.data_batch))]
-        if self.do_shuffle: shuffle(indexs)
+        if not self.is_inference: shuffle(indexs)
         for index in indexs:
             yield self.minibatch(index)
             self.nsents += len(self.data_batch[index])
@@ -188,7 +226,7 @@ class Dataset():
         max_src, max_tgt = 0, 0
         for src, tgt in self.data_batch[index]:
             # src is like: <bos> my sentence <eos>
-            # tgt is like: LID my sentence <eos>
+            # tgt is like: LID my sentence <eos> OR <bos> my sentence <eos>
 #            print("src: {}".format(" ".join([str(e) for e in src])))
 #            print("tgt: {}".format(" ".join([str(e) for e in tgt])))
 
@@ -204,15 +242,18 @@ class Dataset():
             
             ntgt_unk = 0
             iref = [] #must be: my sentence <eos>
-            itgt = [] #must be: LID my sentence
-            if len(tgt)>0:
+            itgt = [] #must be: LID my sentence OR <bos> my stencence
+            if self.is_bitext:
                 self.ntgt += len(tgt) - 2 #do not consider LID and <eos>
                 for i,t in enumerate(tgt): 
                     idx_t = self.vocab.get(t)
 #                    print(t,idx_t)
                     if idx_t == idx_unk: ntgt_unk += 1
-                    if i>0: iref.append(idx_t) ### do not include LID
-                    if i<len(tgt)-1: itgt.append(idx_t) ### do not include <eos>
+                    if self.is_inference: #all tokens are used <bos> my sentence <eos>
+                        itgt.append(idx_t)
+                    else: 
+                        if i>0: iref.append(idx_t) ### do not include LID or <bos>
+                        if i<len(tgt)-1: itgt.append(idx_t) ### do not include <eos>
                 self.nunk_tgt += ntgt_unk
 #            print("itgt:{}:".format(len(itgt)),itgt)
 #            print("iref:{}:".format(len(iref)),iref)
