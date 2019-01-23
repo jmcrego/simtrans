@@ -263,7 +263,7 @@ class Model():
         self.config.tloss = score.Loss
         self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
         sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,end_time-ini_time))
-        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc, train.ntgt, 100.0*train.nunk_src/train.nsrc, 100.0*train.nunk_tgt/train.ntgt))
+        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc_tok, train.ntgt_tok, 100.0*train.nsrc_unk/train.nsrc_tok, 100.0*train.ntgt_unk/train.ntgt_tok))
         #keep records
         self.config.seconds = "{:.2f}".format(end_time - ini_time)
         self.config.last_epoch += 1
@@ -283,7 +283,7 @@ class Model():
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
             end_time = time.time()
             sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.2f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,score.Acc,end_time-ini_time))
-            sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc, dev.ntgt, 100.0*dev.nunk_src/dev.nsrc, 100.0*dev.nunk_tgt/dev.ntgt))
+            sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc_tok, dev.ntgt_tok, 100.0*dev.nsrc_unk/dev.nsrc_tok, 100.0*dev.ntgt_unk/dev.ntgt_tok))
             #keep records
             self.config.vloss = score.Loss
 
@@ -322,8 +322,10 @@ class Model():
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch)
             if tst.is_bitext:
                 embed_snt_src_batch, embed_snt_tgt_batch = self.sess.run([self.embed_snt_src, self.embed_snt_tgt], feed_dict=fd)
+                embed_snt_src_batch = embed_snt_src_batch / np.linalg.norm(embed_snt_src_batch)
             else:
                 embed_snt_src_batch = self.sess.run(self.embed_snt_src, feed_dict=fd)
+                embed_snt_tgt_batch = embed_snt_tgt_batch / np.linalg.norm(embed_snt_tgt_batch)
 
             for i_sent in range(len(embed_snt_src_batch)):
                 result = []
@@ -349,12 +351,13 @@ class Model():
                 print "\t".join(result)
 
         end_time = time.time()
-        stoks_per_sec = tst.nsrc / (end_time - ini_time)
+        stoks_per_sec = tst.nsrc_tok / (end_time - ini_time)
         sents_per_sec = tst.len / (end_time - ini_time)
-        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => {:.2f} stoks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc, end_time - ini_time, stoks_per_sec, sents_per_sec))
+        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => {:.2f} stoks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc_tok, end_time - ini_time, stoks_per_sec, sents_per_sec))
 
     def compute_sim(self, src, tgt):
-        sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
+#        sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
+        sim = np.sum(src * tgt) ### src and tgt are already normalized 
         return sim
 
 ###################
