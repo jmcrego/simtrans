@@ -131,6 +131,9 @@ class Dataset():
                 sys.stderr.write('error: LID={} does not exists in vocab\n'.format(lid))
                 sys.exit()
 
+        ###
+        ### Read src/tgt file/s
+        ###
         for ifile in range(len(fSRC)):
             fsrc = fSRC[ifile]
             if not os.path.exists(fsrc):
@@ -183,7 +186,7 @@ class Dataset():
                 ### tgt is: LID|<bos> my sentence <eos>
                 #print("tgt: "+" ".join([str(e) for e in tgt]))
 
-                if self.is_inference or config.seq_size==0 or len(src)-2<=config.seq_size:
+                if self.is_inference or config.seq_size==0 or (len(src)-2<=config.seq_size and len(tgt)-2<=config.seq_size):
                     self.data.append([len(src)-2,src,tgt])
     
             fs.close()
@@ -192,13 +195,17 @@ class Dataset():
         self.len = len(self.data)
         sys.stderr.write('(dataset contains {} examples)\n'.format(self.len))
 
+        ###
         ### sort by source length to allow batches with similar number of src tokens
+        ###
         if not self.is_inference: 
             self.data.sort(key=lambda x: x[0])
 
-        ### second loop to build data_batch
+        ###
+        ### build data_batch
+        ###
         batch = []
-        for slen, src, tgt in self.data: #slen=2 src='<bos> my sentence <eos>' tlen=2 tgt='LID|<bos> my stencence <eos>'
+        for slen, src, tgt in self.data: # src='<bos> my sentence <eos>' tgt='LID|<bos> my stencence <eos>'
             isrc, nunk_src = self.src2isrc(src)
             #print("src\t{}".format(" ".join(str(e) for e in src))) #src <bos> Saturday , April 26 will be a workday , and in exchange , Friday , May 2 will be a day off . <eos>
             #print("isrc",isrc) #('isrc', [2, 11294, 16, 1413, 444, 53518, 17213, 13781, 0, 16, 15391, 31567, 27050, 16, 5325, 16, 8281, 340, 53518, 17213, 13781, 22502, 38251, 18, 3])
@@ -217,7 +224,7 @@ class Dataset():
             if len(batch)==config.batch_size:
                 self.data_batch.append(batch)
                 batch = []
-        if len(batch): self.data_batch.append(batch)
+        if len(batch): self.data_batch.append(batch) ### last batch
         self.data = []
 
         sys.stderr.write('(dataset contains {} batches with up to {} examples each)\n'.format(len(self.data_batch), config.batch_size))
