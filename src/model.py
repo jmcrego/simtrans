@@ -206,8 +206,10 @@ class Model():
     def build_graph(self):
         self.add_placeholders()
         self.add_encoder_src()  
-        if self.config.src_tst:
-            if self.config.tgt_tst: 
+        if self.config.src_tst: ###inference
+            print("inference")
+            if self.config.tgt_tst: ###bitext
+                print("bitext")
                 self.add_encoder_tgt()
         else:
             self.add_decoder()
