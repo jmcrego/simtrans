@@ -18,7 +18,7 @@ class nearest:
                 idb += 1
         sys.stderr.write('Read db file:{} with {} embeddings\n'.format(fdb,len(self.VEC)))
 
-    def query(self, fquery, do_normalize, K, s, parallel, silent):
+    def query(self, fquery, do_normalize, K, s, parallel, only_acc):
         ### read trn sentences
         nok = 0 ### used if -parallel
         iquery = 0
@@ -42,7 +42,7 @@ class nearest:
                         break
                     if parallel and iquery==idb: 
                         nok += 1
-                    if not silent:
+                    if not only_acc:
                         print("{:.5f}\t{}\t{}".format(sim,iquery,idb))
                     k += 1
                     if k == K: 
@@ -62,15 +62,15 @@ K = 1
 s = 0.0
 parallel = False
 normalize = False
-silent = False
-usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-parallel] [-normalize] [-silent] [-h] 
+only_acc = False
+usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-parallel] [-normalize] [-only_acc] [-h] 
    -db     FILE : file with sentences and their corresponding vector representations
    -query  FILE : file with sentences and their corresponding vector representations
    -k       INT : show the k nearest sentences [1]
    -s     FLOAT : minimum similarity to consider two sentences near [0.0]
    -parallel    : files are parallel (compute accuracy)
    -normalize   : normalize vectors
-   -silent      : do not output n-best (only accuracy)
+   -only_acc    : do not output n-bests, only accuracy (files must be parallel)
    -h           : this help
 This scripts finds in file -fdb the -k nearest sentences to each sentence in fquery file
 with a similarity score lower than -s. Similarity is computed as the cosine distance of 
@@ -90,8 +90,8 @@ while len(sys.argv):
         parallel = True
     elif (tok=="-normalize"):
         normalize = True
-    elif (tok=="-silent"):
-        silent = True
+    elif (tok=="-only_acc"):
+        only_acc = True
     elif (tok=="-h"):
         sys.stderr.write("{}\n".format(usage))
         sys.exit()
@@ -108,7 +108,7 @@ if fquery is None:
     sys.exit()
 
 db = nearest(fdb,normalize)
-acc = db.query(fquery,normalize,K,s,parallel,silent)
+acc = db.query(fquery,normalize,K,s,parallel,only_acc)
 
 if parallel:
     print("Acc = {:.2f} %".format(acc))
