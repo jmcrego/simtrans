@@ -31,8 +31,8 @@ class nearest:
 
                 ### find proximity to all db sentences
                 res = defaultdict(float)
-                for i in range(len(VEC)):
-                    sim = np.sum(VEC[i] * vec) 
+                for i in range(len(self.VEC)):
+                    sim = np.sum(self.VEC[i] * vec) 
                     res[i] = sim
 
                 ### output the tst sentences closest to this trn sentence
