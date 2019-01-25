@@ -108,6 +108,10 @@ if fquery is None:
     sys.stderr.write('error: missing -query option\n{}\n'.format(usage))
     sys.exit()
 
+if not parallel and not nbests:
+    sys.stderr.write('error: missing either -parallel or -nbests options\n{}\n'.format(usage))
+    sys.exit()
+
 db = nearest(fdb,no_normalize)
 acc = db.query(fquery,no_normalize,K,s,parallel,nbests)
 
