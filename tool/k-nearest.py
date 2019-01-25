@@ -7,12 +7,13 @@ from collections import defaultdict
 class nearest:
     def __init__(self, fdb, no_normalize):
         ### read tst sentences
+        self.normalize = not no_normalize
         self.VEC = []
         with open(fdb) as f:
             idb = 0
             for line in f:
                 vec = np.array(map(float, line.rstrip('\n').split(' ')))
-                if not no_normalize:
+                if self.normalize:
                     vec = vec/np.linalg.norm(vec)
                 self.VEC.append(vec)
                 idb += 1
@@ -26,7 +27,7 @@ class nearest:
         with open(fquery) as f:
             for line in f:
                 vec = np.array(map(float, line.rstrip('\n').split(' ')))
-                if not no_normalize: 
+                if self.normalize: 
                     vec = vec/np.linalg.norm(vec)
                 ### find proximity to all db sentences
                 res = defaultdict(float)
@@ -51,7 +52,7 @@ class nearest:
                 iquery += 1
 
             if parallel: 
-                acc = 100.0*nok/iquery
+                acc = 100.0*nok/len(self.VEC)
         sys.stderr.write('Processed query file:{} with {} embeddings\n'.format(fquery,iquery))
         return acc
 
