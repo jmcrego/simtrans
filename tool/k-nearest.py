@@ -9,19 +9,19 @@ class nearest:
         ### read tst sentences
         self.VEC = []
         with open(fdb) as f:
-            nline = 0
+            idb = 0
             for line in f:
                 vec = map(float, line.rstrip('\n').split(' '))
                 if do_normalize:
                     vec = vec/np.linalg.norm(vec)
                 self.VEC.append(vec)
-                nline += 1
+                idb += 1
         sys.stderr.write('Read db file:{} with {} embeddings'.format(fdb,len(self.VEC)))
 
     def query(self, fquery, do_normalize, K, s, parallel, silent):
         ### read trn sentences
         nok = 0 ### used if -parallel
-        nline = 0
+        iquery = 0
         acc = 0.0
         with open(fquery) as f:
             for line in f:
@@ -31,25 +31,25 @@ class nearest:
 
                 ### find proximity to all db sentences
                 res = defaultdict(float)
-                for i in range(len(self.VEC)):
-                    sim = np.sum(self.VEC[i] * vec) 
-                    res[i] = sim
+                for idb in range(len(self.VEC)):
+                    sim = np.sum(self.VEC[idb] * vec) 
+                    res[idb] = sim
 
                 ### output the tst sentences closest to this trn sentence
                 k = 0
-                for i in sorted(res, key=res.get, reverse=True):    
-                    sim = res[i]
+                for idb in sorted(res, key=res.get, reverse=True):    
+                    sim = res[idb]
                     if sim < s: 
                         break
-                    if parallel and nline==i: 
+                    if parallel and iquery==idb: 
                         nok += 1
                     if not silent:
-                        print("{:.5f}\t{}\t{}".format(sim,nline,i))
+                        print("{:.5f}\t{}\t{}".format(sim,iquery,idb))
                     k += 1
                     if k == K: 
                         break
     
-                nline += 1
+                iquery += 1
 
             if parallel: 
                 acc = 100.0*nok/nline
