@@ -11,7 +11,7 @@ class nearest:
         with open(fdb) as f:
             idb = 0
             for line in f:
-                vec = map(float, line.rstrip('\n').split(' '))
+                vec = np.array(map(float, line.rstrip('\n').split(' ')))
                 if do_normalize:
                     vec = vec/np.linalg.norm(vec)
                 self.VEC.append(vec)
@@ -25,7 +25,7 @@ class nearest:
         acc = 0.0
         with open(fquery) as f:
             for line in f:
-                vec = map(float, line.rstrip('\n').split(' '))
+                vec = np.array(map(float, line.rstrip('\n').split(' ')))
                 if do_normalize: 
                     vec = vec/np.linalg.norm(vec)
                 print(vec)
