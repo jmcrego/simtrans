@@ -64,9 +64,9 @@ s = 0.0
 parallel = False
 normalize = False
 silent = False
-usage = """usage: {} -f FILE [-k INT] [-s FLOAT] [-h] < SENTENCES
-   -fdb    FILE : file with sentences and their corresponding vector representations
-   -fquery FILE : file with sentences and their corresponding vector representations
+usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-parallel] [-normalize] [-silent] [-h] 
+   -db     FILE : file with sentences and their corresponding vector representations
+   -query  FILE : file with sentences and their corresponding vector representations
    -k       INT : show the k nearest sentences [1]
    -s     FLOAT : minimum similarity to consider two sentences near [0.0]
    -parallel    : files are parallel (compute accuracy)
@@ -79,9 +79,9 @@ the vectors representing each sentence pair.""".format(sys.argv.pop(0))
 
 while len(sys.argv):
     tok = sys.argv.pop(0)
-    if (tok=="-fdb" and len(sys.argv)):
+    if (tok=="-db" and len(sys.argv)):
         fdb = sys.argv.pop(0)
-    if (tok=="-fquery" and len(sys.argv)):
+    if (tok=="-query" and len(sys.argv)):
         fquery = sys.argv.pop(0)
     elif (tok=="-k" and len(sys.argv)):
         K = int(sys.argv.pop(0))
@@ -101,11 +101,11 @@ while len(sys.argv):
         sys.exit()
 
 if fdb is None:
-    sys.stderr.write('error: missing -fdb option\n{}\n'.format(usage))
+    sys.stderr.write('error: missing -db option\n{}\n'.format(usage))
     sys.exit()
 
 if fquery is None:
-    sys.stderr.write('error: missing -fquery option\n{}\n'.format(usage))
+    sys.stderr.write('error: missing -query option\n{}\n'.format(usage))
     sys.exit()
 
 db = nearest(fdb,normalize)
