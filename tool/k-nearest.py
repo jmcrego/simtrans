@@ -16,7 +16,7 @@ class nearest:
                     vec = vec/np.linalg.norm(vec)
                 self.VEC.append(vec)
                 idb += 1
-        sys.stderr.write('Read db file:{} with {} embeddings'.format(fdb,len(self.VEC)))
+        sys.stderr.write('Read db file:{} with {} embeddings\n'.format(fdb,len(self.VEC)))
 
     def query(self, fquery, do_normalize, K, s, parallel, silent):
         ### read trn sentences
@@ -53,7 +53,7 @@ class nearest:
 
             if parallel: 
                 acc = 100.0*nok/nline
-        sys.stderr.write('Processed query file:{} with {} embeddings'.format(fquery,nline))
+        sys.stderr.write('Processed query file:{} with {} embeddings\n'.format(fquery,nline))
         return acc
 
 f = None
