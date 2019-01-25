@@ -38,7 +38,7 @@ class nearest:
                 ### output the tst sentences closest to this trn sentence
                 k = 0
                 for i in sorted(res, key=res.get, reverse=True):    
-                sim = res[i]
+                    sim = res[i]
                     if sim < s: 
                         break
                     if parallel and nline==i: 
