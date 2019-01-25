@@ -107,8 +107,8 @@ if fquery is None:
     sys.stderr.write('error: missing -query option\n{}\n'.format(usage))
     sys.exit()
 
-db = nearest(fdb,normalize)
-acc = db.query(fquery,normalize,K,s,parallel,only_acc)
+db = nearest(fdb,no_normalize)
+acc = db.query(fquery,no_normalize,K,s,parallel,nbests)
 
 if parallel:
     print("Acc = {:.2f} %".format(acc))
