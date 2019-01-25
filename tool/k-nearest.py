@@ -83,11 +83,13 @@ for line in sys.stdin:
     for i in sorted(res, key=res.get, reverse=True):    
         sim = res[i]
         if sim < s: break
-        if parallel and nline==i: nok += 1
-        if c_txt is not None: 
-            print("{:.5f}\t{}\t{}\t{}\t{}".format(sim,nline,tok[c_txt],i,TXT[i]))
+        if parallel:
+            if nline==i: nok += 1
         else:
-            print("{:.5f}\t{}\t{}".format(sim,nline,i))
+            if c_txt is not None: 
+                print("{:.5f}\t{}\t{}\t{}\t{}".format(sim,nline,tok[c_txt],i,TXT[i]))
+            else:
+                print("{:.5f}\t{}\t{}".format(sim,nline,i))
         k += 1
         if k == K: break
     
