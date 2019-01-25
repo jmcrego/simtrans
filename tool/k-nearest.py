@@ -9,12 +9,14 @@ c_emb = 0
 c_txt = None
 K = 1
 s = 0.0
+parallel = False
 usage = """usage: {} -f FILE [-k INT] [-s FLOAT] [-h] < SENTENCES
    -f    FILE : file with sentences and their corresponding vector representations
    -c_emb INT : column containing vector representations (starting by 0) [0]
    -c_txt INT : column containing textual sentences (starting by 0) []
    -k     INT : show the k nearest sentences [1]
    -s   FLOAT : minimum similarity to consider two sentences near [0.0]
+   -parallel  : sentences are parallel
    -h         : this help
 This scripts finds in file -f the -k nearest sentences to each sentence in 
 SENTENCES and with a similarity score lower than -s. Similarity is computed 
@@ -32,6 +34,8 @@ while len(sys.argv):
         c_txt = int(sys.argv.pop(0))
     elif (tok=="-s" and len(sys.argv)):
         s = float(sys.argv.pop(0))
+    elif (tok=="-parallel"):
+        parallel = True
     elif (tok=="-h"):
         sys.stderr.write("{}\n".format(usage))
         sys.exit()
@@ -57,6 +61,7 @@ with open(f) as f:
         nline += 1
 
 ### read trn sentences
+nok = 0 ### used if -parallel
 nline = 0
 for line in sys.stdin:
     tok = line.rstrip('\n').split('\t')
@@ -78,6 +83,7 @@ for line in sys.stdin:
     for i in sorted(res, key=res.get, reverse=True):    
         sim = res[i]
         if sim < s: break
+        if parallel and nline==i: nok += 1
         if c_txt is not None: 
             print("{:.5f}\t{}\t{}\t{}\t{}".format(sim,nline,tok[c_txt],i,TXT[i]))
         else:
@@ -87,5 +93,6 @@ for line in sys.stdin:
     
     nline += 1
 
-
+if parallel:
+    print("Acc = {:.2f} %".format(100*nok/nline))
 
