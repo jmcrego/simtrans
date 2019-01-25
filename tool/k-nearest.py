@@ -51,8 +51,8 @@ class nearest:
                 iquery += 1
 
             if parallel: 
-                acc = 100.0*nok/nline
-        sys.stderr.write('Processed query file:{} with {} embeddings\n'.format(fquery,nline))
+                acc = 100.0*nok/iquery
+        sys.stderr.write('Processed query file:{} with {} embeddings\n'.format(fquery,iquery))
         return acc
 
 f = None
