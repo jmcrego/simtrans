@@ -109,7 +109,7 @@ if fquery is None:
     sys.exit()
 
 db = nearest(fdb,normalize)
-acc = db.query(fquery,normalize,K,s,parallel)
+acc = db.query(fquery,normalize,K,s,parallel,silent)
 
 if parallel:
     print("Acc = {:.2f} %".format(acc))
