@@ -28,11 +28,9 @@ class nearest:
                 vec = np.array(map(float, line.rstrip('\n').split(' ')))
                 if do_normalize: 
                     vec = vec/np.linalg.norm(vec)
-                print(vec)
                 ### find proximity to all db sentences
                 res = defaultdict(float)
                 for idb in range(len(self.VEC)):
-                    print(self.VEC[idb])
                     sim = np.sum(self.VEC[idb] * vec) 
                     res[idb] = sim
 
