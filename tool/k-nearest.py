@@ -96,5 +96,5 @@ for line in sys.stdin:
     nline += 1
 
 if parallel:
-    print("Acc = {:.2f} %".format(100*nok/nline))
+    print("Acc = {:.2f} %".format(100.0*nok/nline))
 
