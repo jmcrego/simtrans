@@ -81,7 +81,7 @@ while len(sys.argv):
     tok = sys.argv.pop(0)
     if (tok=="-db" and len(sys.argv)):
         fdb = sys.argv.pop(0)
-    if (tok=="-query" and len(sys.argv)):
+    elif (tok=="-query" and len(sys.argv)):
         fquery = sys.argv.pop(0)
     elif (tok=="-k" and len(sys.argv)):
         K = int(sys.argv.pop(0))
