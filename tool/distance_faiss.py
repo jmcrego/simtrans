@@ -109,10 +109,19 @@ emb_db = read_embeddings(fdb)
 emb_query = read_embeddings(fquery)
 start = time.time()
 index = db_indexs(gpu, emb_db)
-
+nok = 0
+acc = 0.0
 distances, index_ = index.search(emb_query, K)
 for i in range(index_.shape[0]):
     for j in range(K):
-        print("{:.6f}\t{}\t{}".format(distances[i,j], i, index_[i,j]))
+        if nbests:
+            print("{:.6f}\t{}\t{}".format(distances[i,j], i, index_[i,j]))
+        if parallel:
+            if i==index_[i,j]: nok += 1
 end = time.time()
+if parallel:
+    print("Acc = {:.2f} %".format(100.0*nok/index_.shape[0]))
+
 sys.stderr.write("selecting rate: {:.2f} sentences per second\n".format(index_.shape[0]/(end-start)))
+
+
