@@ -7,18 +7,22 @@ import datetime
 
 fdb = None
 fquery = None
-c = 0
 K = 1
 s = 0.0
+parallel = False
+nbests = False
+no_normalize = False
 gpu = False
-usage = """usage: {} -db FILE -query FILE [-c INT] [-k INT] [-s FLOAT] [-gpu] [-h]
-   -db    FILE : file with sentences and their corresponding vector representations
-   -query FILE : file with sentences and their corresponding vector representations
-   -c      INT : column containing vector representations (starting by 0) [0]
-   -k      INT : show the k nearest sentences [1]
-   -s    FLOAT : minimum similarity to consider two sentences near [0.0]
-   -gpu        : use gpu (passed through CUDA_VISIBLE_DEVICES)
-   -h          : this help
+usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-gpu] [-parallel] [-no_normalize] [-nbests] [-h]
+   -db    FILE  : file with sentences and their corresponding vector representations
+   -query FILE  : file with sentences and their corresponding vector representations
+   -k      INT  : show the k nearest sentences [1]
+   -s    FLOAT  : minimum similarity to consider two sentences near [0.0]
+   -parallel    : output accuracy (files must be parallel)
+   -nbests      : output n-best results
+   -no_normalize: do not normalize vectors
+   -gpu         : use gpu (passed through CUDA_VISIBLE_DEVICES)
+   -h           : this help
 This scripts finds in file -db the -k nearest sentences to those in file -query. 
 Distance is computed as inner product of the vectors representing each sentence pair.""".format(sys.argv.pop(0))
 
@@ -36,6 +40,12 @@ while len(sys.argv):
         s = float(sys.argv.pop(0))
     elif (tok=="-gpu"):
         gpu = True
+    elif (tok=="-parallel"):
+        parallel = True
+    elif (tok=="-no_normalize"):
+        normalize = True
+    elif (tok=="-nbests"):
+        nbests = True
     elif (tok=="-h"):
         sys.stderr.write("{}\n".format(usage))
         sys.exit()
@@ -51,9 +61,9 @@ if fquery is None:
     sys.stderr.write('error: missing -query option\n{}\n'.format(usage))
     sys.exit()
 
-def read_embeddings(file,c):
+def read_embeddings(file):
     t1 = time.time()
-    sys.stderr.write('Reading db: {} '.format(file))
+    sys.stderr.write('Reading embeddings: {} '.format(file))
     f = open(file,"r")
     emb = []
     n = 0
@@ -62,14 +72,15 @@ def read_embeddings(file,c):
         if n%100000 == 0:
             if n%1000000 == 0: sys.stderr.write(str(n))
             else: sys.stderr.write(".")
-        ls = l.strip().split("\t")[c].split()
+        ls = l.strip().split()
         emb.append([float(i) for i in ls])
+    emb = np.array(emb).astype('float32')
     t2 = time.time()
     sys.stderr.write("[{} sentences, {:.2f} seconds]".format(len(emb),t2-t1))
-    emb = np.array(emb).astype('float32')
-    emb = emb/np.sqrt(np.sum(emb*emb,1))[:,None]
-    t3 = time.time()
-    sys.stderr.write("[NORMALIZED {:.2f} seconds]\n".format(t3-t2))
+    if not no_normalize: 
+        emb = emb/np.sqrt(np.sum(emb*emb,1))[:,None]
+        t3 = time.time()
+        sys.stderr.write("[NORMALIZED {:.2f} seconds]\n".format(t3-t2))
     return emb
 
 def db_indexs(gpu, emb_db):
@@ -94,8 +105,8 @@ def db_indexs(gpu, emb_db):
 ### main
 #################################
 
-emb_db = read_embeddings(fdb,c)
-emb_query = read_embeddings(fquery,c)
+emb_db = read_embeddings(fdb)
+emb_query = read_embeddings(fquery)
 start = time.time()
 index = db_indexs(gpu, emb_db)
 
