@@ -57,8 +57,6 @@ class nearest:
         return acc
 
 f = None
-c_emb = 0
-c_txt = None
 K = 1
 s = 0.0
 parallel = False
