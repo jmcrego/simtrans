@@ -43,7 +43,7 @@ while len(sys.argv):
     elif (tok=="-parallel"):
         parallel = True
     elif (tok=="-no_normalize"):
-        normalize = True
+        no_normalize = True
     elif (tok=="-nbests"):
         nbests = True
     elif (tok=="-h"):
@@ -77,7 +77,7 @@ def read_embeddings(file):
     emb = np.array(emb).astype('float32')
     t2 = time.time()
     sys.stderr.write("[{} sentences, {:.2f} seconds]".format(len(emb),t2-t1))
-    if not no_normalize: 
+    if not no_normalize:
         emb = emb/np.sqrt(np.sum(emb*emb,1))[:,None]
         t3 = time.time()
         sys.stderr.write("[NORMALIZED {:.2f} seconds]\n".format(t3-t2))

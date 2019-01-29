@@ -88,7 +88,7 @@ while len(sys.argv):
     elif (tok=="-parallel"):
         parallel = True
     elif (tok=="-no_normalize"):
-        normalize = True
+        no_normalize = True
     elif (tok=="-nbests"):
         nbests = True
     elif (tok=="-h"):
