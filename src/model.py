@@ -319,7 +319,7 @@ class Model():
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
 
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch)
-            self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
+#            self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
             if tst.is_bitext:
                 embed_snt_src_batch, embed_snt_tgt_batch = self.sess.run([self.embed_snt_src, self.embed_snt_tgt], feed_dict=fd)
             else:
@@ -359,8 +359,6 @@ class Model():
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => {:.2f} stoks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc_tok, end_time - ini_time, stoks_per_sec, sents_per_sec))
 
     def compute_sim(self, src, tgt):
-        print("compute_sim\n\tsrc[0-9]={}\n\ttgt[0-9]={}".format(" ".join([str(e) for e in src])," ".join([str(e) for e in tgt])))
-#        sim = np.sum((src/np.linalg.norm(src)) * (tgt/np.linalg.norm(tgt))) 
         sim = np.sum(src * tgt) ### src and tgt are already normalized 
         return sim
 
