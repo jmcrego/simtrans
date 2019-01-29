@@ -322,14 +322,16 @@ class Model():
             self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
             if tst.is_bitext:
                 embed_snt_src_batch, embed_snt_tgt_batch = self.sess.run([self.embed_snt_src, self.embed_snt_tgt], feed_dict=fd)
-#                embed_snt_src_batch = embed_snt_src_batch / np.linalg.norm(embed_snt_src_batch)
-#                embed_snt_tgt_batch = embed_snt_tgt_batch / np.linalg.norm(embed_snt_tgt_batch)
             else:
                 embed_snt_src_batch = self.sess.run(self.embed_snt_src, feed_dict=fd)
-                embed_snt_src_batch = embed_snt_src_batch / np.linalg.norm(embed_snt_src_batch)
 
             for i_sent in range(len(embed_snt_src_batch)):
                 result = []
+                ### normalization
+                embed_snt_src_batch[i_sent] = embed_snt_src_batch[i_sent] / np.linalg.norm(embed_snt_src_batch[i_sent])
+                if tst.is_bitext:
+                    embed_snt_tgt_batch[i_sent] = embed_snt_tgt_batch[i_sent] / np.linalg.norm(embed_snt_tgt_batch[i_sent])
+
                 if self.config.show_sim:
                     if tst.is_bitext: result.append("{:.6f}".format(self.compute_sim(embed_snt_src_batch[i_sent], embed_snt_tgt_batch[i_sent])))
 
