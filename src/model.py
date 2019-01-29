@@ -318,10 +318,11 @@ class Model():
         ini_time = time.time()
         for iter, (src_batch, tgt_batch, ref_batch, raw_src_batch, raw_tgt_batch, nsrc_unk_batch, ntgt_unk_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
 
-            #self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
+            self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch)
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch)
             if tst.is_bitext:
                 embed_snt_src_batch, embed_snt_tgt_batch = self.sess.run([self.embed_snt_src, self.embed_snt_tgt], feed_dict=fd)
+
                 embed_snt_src_batch = embed_snt_src_batch / np.linalg.norm(embed_snt_src_batch)
                 embed_snt_tgt_batch = embed_snt_tgt_batch / np.linalg.norm(embed_snt_tgt_batch)
             else:
@@ -436,6 +437,6 @@ class Model():
         sys.stderr.write("shape of embed_src = {}\n".format(np.array(embed_src).shape))
         sys.stderr.write("shape of out_src = {}\n".format(np.array(out_src).shape))
         sys.stderr.write("shape of embed_snt_src = {}\n".format(np.array(embed_snt_src).shape))
-        sys.exit()
+
 
 
