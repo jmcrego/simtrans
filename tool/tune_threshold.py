@@ -32,17 +32,17 @@ def do_insert(i):
         print("first2",str(first2))
         print("last2",str(last2))
         SRC = src.split(' ')
-        into = random.randint(0,len(SRC)-1) #[0,n)
+        into = random.randint(0,len(SRC)) #[0,n)
         print("into",str(into))
-        SRC.insert(into," ".join(SRC2[first2:last2+1]))
+        SRC.insert(into," ".join(SRC2[first2:last2]))
         print("Is_{}_{}\t{}\t{}".format(into, last2-first2+1, " ".join(SRC), tgt))
     else:
         TGT2 = tgt2.split(' ')
         first2 = random.randint(0,len(TGT2)) #[0,n)
         last2 = random.randint(first2,len(TGT2)) #[first,n)
         TGT = tgt.split(' ')
-        into = random.randint(0,len(TGT)-1) #[0,n)
-        TGT.insert(into," ".join(TGT2[first2:last2+1]))   
+        into = random.randint(0,len(TGT)) #[0,n)
+        TGT.insert(into," ".join(TGT2[first2:last2]))   
         print("It_{}_{}\t{}\t{}".format(into, last2-first2+1, src, " ".join(TGT)))
 
 def do_delete(i):
