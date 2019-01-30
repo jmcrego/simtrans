@@ -59,6 +59,11 @@ if fquery is None:
     sys.stderr.write('error: missing -query option\n{}\n'.format(usage))
     sys.exit()
 
+if not parallel and not nbests:
+    sys.stderr.write('error: missing -nbests OR -parallel option\n{}\n'.format(usage))
+    sys.exit()
+
+
 def read_embeddings(file,normalize):
     t1 = time.time()
     sys.stderr.write('Reading embeddings: {} '.format(file))
