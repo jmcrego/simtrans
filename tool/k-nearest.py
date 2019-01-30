@@ -12,7 +12,8 @@ class nearest:
         with open(fdb) as f:
             idb = 0
             for line in f:
-                vec = np.array(map(float, line.rstrip('\n').split(' ')))
+                vec_str = line.rstrip('\n').split(' ')
+                vec = np.array(map(float, vec_str))
                 if self.normalize:
                     vec = vec/np.linalg.norm(vec)
                 self.VEC.append(vec)
@@ -26,7 +27,9 @@ class nearest:
         acc = 0.0
         with open(fquery) as f:
             for line in f:
-                vec = np.array(map(float, line.rstrip('\n').split(' ')))
+                vec_str = line.rstrip('\n').split(' ')
+                vec = np.array(map(float, vec_str))
+                #vec = np.array(map(float, line.rstrip('\n').split(' ')))
                 if self.normalize: 
                     vec = vec/np.linalg.norm(vec)
                 ### find proximity to all db sentences
