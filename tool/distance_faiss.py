@@ -34,8 +34,6 @@ while len(sys.argv):
         fquery = sys.argv.pop(0)
     elif (tok=="-k" and len(sys.argv)):
         K = int(sys.argv.pop(0))
-    elif (tok=="-c" and len(sys.argv)):
-        c = int(sys.argv.pop(0))
     elif (tok=="-s" and len(sys.argv)):
         s = float(sys.argv.pop(0))
     elif (tok=="-gpu"):
@@ -78,7 +76,7 @@ def read_embeddings(file):
             emb[-1] = emb[-1]/np.linalg.norm(emb[-1])
     emb = np.array(emb).astype('float32')
     t2 = time.time()
-    sys.stderr.write("[{} sentences, {:.2f} seconds]".format(len(emb),t2-t1))
+    sys.stderr.write("[{} sentences, {:.2f} seconds]\n".format(len(emb),t2-t1))
     return emb
 
 def db_indexs(gpu, emb_db):
