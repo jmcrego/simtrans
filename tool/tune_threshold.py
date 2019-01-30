@@ -33,7 +33,7 @@ def do_insert(i):
         print("last2",str(last2))
         SRC = src.split(' ')
         into = random.randint(0,len(SRC)) #[0,n)
-        print("last2",str(into))
+        print("into",str(into))
         SRC.insert(into," ".join(SRC2[first2:last2+1]))
         print("Is_{}_{}\t{}\t{}".format(into, last2-first2+1, " ".join(SRC), tgt))
     else:
