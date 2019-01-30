@@ -11,7 +11,7 @@ K = 1
 s = 0.0
 parallel = False
 nbests = False
-no_normalize = False
+normalize = False
 gpu = False
 usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-gpu] [-parallel] [-no_normalize] [-nbests] [-h]
    -db    FILE  : file with sentences and their corresponding vector representations
@@ -20,7 +20,7 @@ usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-gpu] [-parallel]
    -s    FLOAT  : minimum similarity to consider two sentences near [0.0]
    -parallel    : output accuracy (files must be parallel)
    -nbests      : output n-best results
-   -no_normalize: do not normalize vectors
+   -normalize   : normalize input vectors
    -gpu         : use gpu (passed through CUDA_VISIBLE_DEVICES)
    -h           : this help
 This scripts finds in file -db the -k nearest sentences to those in file -query. 
@@ -42,8 +42,8 @@ while len(sys.argv):
         gpu = True
     elif (tok=="-parallel"):
         parallel = True
-    elif (tok=="-no_normalize"):
-        no_normalize = True
+    elif (tok=="-normalize"):
+        normalize = True
     elif (tok=="-nbests"):
         nbests = True
     elif (tok=="-h"):
@@ -74,13 +74,11 @@ def read_embeddings(file):
             else: sys.stderr.write(".")
         ls = l.strip().split()
         emb.append([float(i) for i in ls])
+        if normalize:
+            emb[-1] = emb[-1]/np.linalg.norm(emb[-1])
     emb = np.array(emb).astype('float32')
     t2 = time.time()
     sys.stderr.write("[{} sentences, {:.2f} seconds]".format(len(emb),t2-t1))
-    if not no_normalize:
-        emb = emb/np.sqrt(np.sum(emb*emb,1))[:,None]
-        t3 = time.time()
-        sys.stderr.write("[NORMALIZED {:.2f} seconds]\n".format(t3-t2))
     return emb
 
 def db_indexs(gpu, emb_db):
@@ -105,8 +103,8 @@ def db_indexs(gpu, emb_db):
 ### main
 #################################
 
-emb_db = read_embeddings(fdb)
-emb_query = read_embeddings(fquery)
+emb_db = read_embeddings(fdb,normalize)
+emb_query = read_embeddings(fquery,normalize)
 start = time.time()
 index = db_indexs(gpu, emb_db)
 nok = 0
