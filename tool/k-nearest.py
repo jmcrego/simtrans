@@ -14,7 +14,6 @@ class nearest:
             for line in f:
                 vec = line.rstrip('\n').split(' ')
                 vec = np.asfarray(vec,float)
-#                vec = np.array(map(float, vec_str))
                 if self.normalize:
                     vec = vec/np.linalg.norm(vec)
                 self.VEC.append(vec)
@@ -30,8 +29,6 @@ class nearest:
             for line in f:
                 vec = line.rstrip('\n').split(' ')
                 vec = np.asfarray(vec,float)
-#                vec = np.array(map(float, vec_str))
-                #vec = np.array(map(float, line.rstrip('\n').split(' ')))
                 if self.normalize: 
                     vec = vec/np.linalg.norm(vec)
                 ### find proximity to all db sentences
