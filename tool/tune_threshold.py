@@ -35,7 +35,7 @@ def do_insert(i):
         SRC = src.split(' ')
         into = random.randint(0,len(SRC)) #[0,n)
         print("into",str(into))
-        SRC.insert(into," ".join(SRC2[first2:last2]))
+        SRC.insert(into," ".join(SRC2[first2:last2+1]))
         print("Is_{}_{}\t{}\t{}".format(into, last2-first2+1, " ".join(SRC), tgt))
     else:
         TGT2 = tgt2.split(' ')
@@ -43,7 +43,7 @@ def do_insert(i):
         last2 = random.randint(first2,len(TGT2)-1) #[first,n)
         TGT = tgt.split(' ')
         into = random.randint(0,len(TGT)) #[0,n)
-        TGT.insert(into," ".join(TGT2[first2:last2]))   
+        TGT.insert(into," ".join(TGT2[first2:last2+1]))   
         print("It_{}_{}\t{}\t{}".format(into, last2-first2+1, src, " ".join(TGT)))
 
 def do_delete(i):
