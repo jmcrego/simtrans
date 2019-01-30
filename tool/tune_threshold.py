@@ -6,6 +6,8 @@ import random
 import numpy as np
 from collections import defaultdict
 
+random.seed(1234)
+
 def do_parallel(i):
     src, tgt = data[i]
     print("P\t{}\t{}".format(src, tgt))
