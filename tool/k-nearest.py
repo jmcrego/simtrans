@@ -5,9 +5,9 @@ import numpy as np
 from collections import defaultdict
 
 class nearest:
-    def __init__(self, fdb, no_normalize):
+    def __init__(self, fdb, normalize):
         ### read tst sentences
-        self.normalize = not no_normalize
+        self.normalize = normalize
         self.VEC = []
         with open(fdb) as f:
             idb = 0
@@ -19,7 +19,7 @@ class nearest:
                 idb += 1
         sys.stderr.write('Read db file:{} with {} embeddings\n'.format(fdb,len(self.VEC)))
 
-    def query(self, fquery, no_normalize, K, s, parallel, nbests):
+    def query(self, fquery, normalize, K, s, parallel, nbests):
         ### read trn sentences
         nok = 0 ### used if -parallel
         iquery = 0
@@ -61,15 +61,15 @@ K = 1
 s = 0.0
 parallel = False
 nbests = False
-no_normalize = False
-usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-parallel] [-nbests] [-no_normalize] [-h] 
+normalize = False
+usage = """usage: {} -db FILE -query FILE [-k INT] [-s FLOAT] [-parallel] [-nbests] [-normalize] [-h] 
    -db     FILE : file with sentences and their corresponding vector representations
    -query  FILE : file with sentences and their corresponding vector representations
    -k       INT : show the k nearest sentences [1]
    -s     FLOAT : minimum similarity to consider two sentences near [0.0]
    -parallel    : output accuracy (files must be parallel)
    -nbests      : output n-best results
-   -no_normalize: do not normalize vectors
+   -normalize   : normalize vectors
    -h           : this help
 This scripts finds in file -fdb the -k nearest sentences to each sentence in fquery file
 with a similarity score lower than -s. Similarity is computed as the cosine distance of 
@@ -87,8 +87,8 @@ while len(sys.argv):
         s = float(sys.argv.pop(0))
     elif (tok=="-parallel"):
         parallel = True
-    elif (tok=="-no_normalize"):
-        no_normalize = True
+    elif (tok=="-normalize"):
+        normalize = True
     elif (tok=="-nbests"):
         nbests = True
     elif (tok=="-h"):
@@ -110,8 +110,8 @@ if not parallel and not nbests:
     sys.stderr.write('error: missing either -parallel or -nbests options\n{}\n'.format(usage))
     sys.exit()
 
-db = nearest(fdb,no_normalize)
-acc = db.query(fquery,no_normalize,K,s,parallel,nbests)
+db = nearest(fdb,normalize)
+acc = db.query(fquery,normalize,K,s,parallel,nbests)
 
 if parallel:
     print("Acc = {:.2f} %".format(acc))
