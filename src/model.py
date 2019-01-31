@@ -360,7 +360,7 @@ class Model():
 
     def compute_sim(self, src, tgt):
 #        sim = np.sum(src * tgt) ### src and tgt are already normalized 
-        sim = sqrt(sum(pow(a-b,2) for a, b in zip(src, tgt)))
+        sim = np.sqrt(np.sum(np.pow(a-b,2) for a, b in zip(src, tgt)))
         return sim
 
 ###################
