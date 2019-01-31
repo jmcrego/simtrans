@@ -359,8 +359,8 @@ class Model():
         sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => {:.2f} stoks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc_tok, end_time - ini_time, stoks_per_sec, sents_per_sec))
 
     def compute_sim(self, src, tgt):
-#        sim = np.sum(src * tgt) ### src and tgt are already normalized 
-        sim = np.sqrt(np.sum(np.power(a-b,2) for a, b in zip(src, tgt)))
+        sim = np.sum(src * tgt) ### src and tgt are already normalized 
+#        sim = np.sqrt(np.sum(np.power(a-b,2) for a, b in zip(src, tgt)))
         return sim
 
 ###################
