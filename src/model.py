@@ -354,13 +354,17 @@ class Model():
                 print "\t".join(result)
 
         end_time = time.time()
-        stoks_per_sec = tst.nsrc_tok / (end_time - ini_time)
+        toks = tst.nsrc_tok
+        if tst.is_bitext:
+            toks += tst.ntgt_tok
+        stoks_per_sec = toks / (end_time - ini_time)
         sents_per_sec = tst.len / (end_time - ini_time)
-        sys.stderr.write("Analysed {} sentences with {} src tokens in {:.2f} seconds => {:.2f} stoks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc_tok, end_time - ini_time, stoks_per_sec, sents_per_sec))
+        sys.stderr.write("Analysed {} sentences with {}/{} tokens in {:.2f} seconds => {:.2f} toks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc_tok, tst.ntgt_tok, end_time - ini_time, stoks_per_sec, sents_per_sec))
 
     def compute_sim(self, src, tgt):
-        sim = np.sum(src * tgt) ### src and tgt are already normalized 
-#        sim = np.sqrt(np.sum(np.power(a-b,2) for a, b in zip(src, tgt)))
+        ### src and tgt are already normalized 
+        sim = np.sum(src * tgt) ### cosine
+#        sim = np.sqrt(np.sum(np.power(a-b,2) for a, b in zip(src, tgt))) #euclidean
         return sim
 
 ###################
