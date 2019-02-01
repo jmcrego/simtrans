@@ -110,6 +110,7 @@ class Dataset():
         self.max_sents = config.max_sents
         self.data = []
         self.data_batch = []
+        self.maxtoks = 256
 
         ### check number of fSRC/fTGT/LID parameters are correct
         if len(fSRC) and len(fSRC)==len(fTGT) and len(fSRC)==len(LID): 
@@ -168,9 +169,9 @@ class Dataset():
                     src = sline.split(' ')
 
                 ### truncate if too long even for inference
-                if len(src)>256: 
-                    sys.stderr.write('warning: src sentence sized of {} tokens truncated to 256\n'.format(len(src)))
-                    src = src[0:256]
+                if len(src)>self.maxtoks: 
+                    sys.stderr.write('warning: src sentence sized of {} tokens truncated to {}\n'.format(len(src),self.maxtoks))
+                    src = src[0:self.maxtoks]
 
                 src.insert(0,str_bos)
                 src.append(str_eos)
@@ -186,9 +187,9 @@ class Dataset():
                         tgt = tline.split(' ')
 
                     ### truncate if too long even for inference
-                    if len(src)>256: 
-                        sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to 256\n'.format(len(tgt)))
-                        tgt = tgt[0:256]
+                    if len(tgt)>self.maxtoks: 
+                        sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to {}\n'.format(len(tgt),self.maxtoks))
+                        tgt = tgt[0:self.maxtoks]
 
                     if self.is_inference: 
                         tgt.insert(0,str_bos)
