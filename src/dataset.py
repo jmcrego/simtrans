@@ -166,6 +166,12 @@ class Dataset():
                     src, _ = config.token.tokenize(str(sline))
                 else: 
                     src = sline.split(' ')
+
+                ### truncate if too long even for inference
+                if len(src)>256: 
+                    sys.stderr.write('warning: src sentence sized of {} tokens truncated to 256\n'.format(len(src)))
+                    src = src[0:256]
+
                 src.insert(0,str_bos)
                 src.append(str_eos)
                 ### src is '<bos> my sentence <eos>'
@@ -178,6 +184,12 @@ class Dataset():
                         tgt, _ = config.token.tokenize(str(tline))
                     else: 
                         tgt = tline.split(' ')
+
+                    ### truncate if too long even for inference
+                    if len(src)>256: 
+                        sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to 256\n'.format(len(tgt)))
+                        tgt = tgt[0:256]
+
                     if self.is_inference: 
                         tgt.insert(0,str_bos)
                     else: ### is inference
