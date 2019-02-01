@@ -110,7 +110,7 @@ class Dataset():
         self.max_sents = config.max_sents
         self.data = []
         self.data_batch = []
-        self.maxtoks = 256
+        self.maxtoks = 512
 
         ### check number of fSRC/fTGT/LID parameters are correct
         if len(fSRC) and len(fSRC)==len(fTGT) and len(fSRC)==len(LID): 
