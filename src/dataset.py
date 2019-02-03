@@ -26,6 +26,7 @@ str_bos = "<bos>"
 idx_eos = 3
 str_eos = "<eos>"
 
+'''
 class Embeddings():
 
     def __init__(self, voc, length):
@@ -33,10 +34,11 @@ class Embeddings():
         # i need an embedding for each word in voc
         # embedding matrix must have tokens in same order than voc 0:<unk>, 1:<pad>, 2:le, ...
         self.matrix = []
-        for tok in voc: self.matrix.append(np.random.normal(0, 1.0, self.dim)) 
+        for tok in voc: 
+            self.matrix.append(np.random.normal(0, 1.0, self.dim)) 
         self.matrix = np.asarray(self.matrix, dtype=np.float32)
         self.matrix = self.matrix / np.sqrt((self.matrix ** 2).sum(1))[:, None]
-
+'''
 class Vocab():
 
     def __init__(self, dict_file, net_lid=[]):
