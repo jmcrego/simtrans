@@ -6,7 +6,7 @@ import os
 import sys
 import json
 from shutil import copyfile
-from dataset import Vocab, Embeddings
+from dataset import Vocab #, Embeddings
 from tokenizer import build_tokenizer
 
 class Config():
@@ -34,9 +34,11 @@ class Config():
 
    Network topology:
    -net_wrd_len       INT : word src/tgt embeddings size [320]
-   -net_blstm_lens STRING : units of src bi-lstm layers [1024,1024,1024] (3 layers with 512 cells for each direction)
+   -net_conv_lens  STRING : kernel:units of each conv layer [3:1024,5:1024] (2 layers with 1024 cells and kernel sizes 3 and 5 respectively) []
+   -net_blstm_lens STRING : units of src bi-lstm layers [1024,1024,1024] (3 layers with 1024 cells for each direction)
    -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
    -net_lstm_len      INT : units of the tgt lstm layer [2048]
+
    -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop [sgd]
    -net_lid        STRING : vocabulary of LID tags to be included in tgt_voc [] (Ex: LIDisEnglish,LIDisFrench,LIDisGerman)
 
@@ -45,7 +47,7 @@ class Config():
    -opt_decay       FLOAT : learning rate decay value when opt_method='sgd' [0.9]    (use 0.98 for adam)
    -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.005] (use 0.0 for adam)
    -clip            FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
-   -max_sents         INT : Consider this number of sentences per batch (0 for all) [0]
+   -max_sents         INT : Consider this number of sentences per epoch (0 for all) [0]
    -n_epochs          INT : train for this number of epochs [1]
    -reports           INT : report every this many batches [100]
 
@@ -80,11 +82,12 @@ class Config():
         self.tok = None
         #will be created
         self.vocab = None #vocabulary
-        self.embed = None #embedding
+#        self.embed = None #embedding
         self.token = None #onmt tokenizer
         #network
         self.net_wrd_len = 320
-        self.net_blstm_lens = [1024, 1024, 1024]
+        self.net_blstm_lens = []
+        self.net_conv_lens = []
         self.net_sentence = 'max'
         self.net_lstm_len = 2048
         self.net_opt = 'sgd'
@@ -139,6 +142,7 @@ class Config():
             #network
             elif (tok=="-net_wrd_len" and len(argv)):    self.net_wrd_len = int(argv.pop(0))
             elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split(','))
+            elif (tok=="-net_conv_lens" and len(argv)):  self.net_conv_lens = argv.pop(0).split(',')
             elif (tok=="-net_sentence" and len(argv)):   self.net_sentence = argv.pop(0)
             elif (tok=="-net_lstm_len" and len(argv)):   self.net_lstm_len = int(argv.pop(0))
             elif (tok=="-net_opt" and len(argv)):        self.net_opt = argv.pop(0)
@@ -237,7 +241,7 @@ class Config():
             #read vocab and token
             self.read_vocab_token()
             #create embeddings
-            self.embed = Embeddings(self.vocab,self.net_wrd_len)
+#            self.embed = Embeddings(self.vocab,self.net_wrd_len)
             #write topology file
             with open(self.mdir + "/topology", 'w') as f: 
                 for opt, val in vars(self).items():

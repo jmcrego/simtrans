@@ -38,44 +38,45 @@ class Score():
             self.sumok += np.count_nonzero(masked_equals)
             self.Acc = 100.0 * self.sumok / self.total_words
 
-
 class Model():
     def __init__(self, config):
         self.config = config
         self.sess = None
 
-    def embedding_initialize(self,NS,ES,embeddings):
-        if embeddings is not None: 
-            m = embeddings.matrix
-        else:
-            sys.stderr.write("embeddings randomly initialized [{},{}]\n".format(NS,ES))
-            m = tf.random_uniform([NS, ES], minval=-0.1, maxval=0.1)
-        return m
-
-    def embed_src_words(self, input, Vs, Es, K):
-        with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE):
-            self.LT = tf.get_variable(initializer = self.embedding_initialize(Vs, Es, self.config.embed), dtype=tf.float32, name="embeddings")
+    def wembedding(self, input, Vs, Es, K):
+        with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
+            self.LT = tf.get_variable(initializer = tf.random_uniform([Vs, Es], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,Es]
-
         return embedded
 
-    def bi_lstm(self, layers, input, length, keep):
+    def bilstm(self, layers, input, length, keep):
+        ### input are the embedded source words [B,Ss,Es]
+        last = []
+        if len(layers)>0 and layers[0]>0:
+            for i,hunits in enumerate(layers):
+                with tf.variable_scope("bilstm_{}".format(i), reuse=tf.AUTO_REUSE):
+                    cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=keep)
+                    cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=keep)
+                    (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=length, dtype=tf.float32)
+                    input = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
+            last = tf.concat([last_src_fw.h, last_src_bw.h], axis=1) #[B, layers[-1]*2] (i take h since last_state is a tuple with (c,h))
+        return input, last
+
+    def conv(self, layers, input, keep):
         ### input are the embedded source words [B,Ss,Es]
         last = []
         if len(layers)>0 and layers[0]>0:
             for i,l in enumerate(layers):
-                with tf.variable_scope("blstm_src_{}".format(i), reuse=tf.AUTO_REUSE):
-                    cell_fw = tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
-                    cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=keep)
-                    cell_bw = tf.contrib.rnn.LSTMCell(l, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
-                    cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=keep)
-                    (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=length, dtype=tf.float32)
-                    input = tf.concat([output_src_fw, output_src_bw], axis=2)  #[B,Ss,layers[i]*2]
-            last = tf.concat([last_src_fw.h, last_src_bw.h], axis=1) #[B, layers[-1]*2] (i take h since last_state is a tuple with (c,h))
+                filts, kernel_size = map(int,l.split(':'))
+                with tf.variable_scope("conv_{}".format(i), reuse=tf.AUTO_REUSE):
+                    # Convolution Layer
+                    input = tf.layers.conv1d(inputs=input, filters=filts, kernel_size=kernel_size, padding="same", activation=tf.nn.relu)
         return input, last
 
-    def embed_sentence(self, out_src, last_src, len_src):
+    def sembedding(self, out_src, last_src, len_src):
         if self.config.net_sentence == 'last':
             if len(self.config.net_blstm_lens) == 0: 
                 sys.stderr.write("error: -net_sentence 'last' cannot be used with -net_blstm_lens 0 layers\n")
@@ -97,7 +98,6 @@ class Model():
         sys.stderr.write("error: bad -net_sentence option '{}'\n".format(self.config.net_sentence))
         sys.exit()
 
-
 ###################
 ### build graph ###
 ###################
@@ -116,11 +116,13 @@ class Model():
         Ss = tf.shape(self.input_src)[1] #seq_length
         Vs = self.config.vocab.length #src vocab
         Es = self.config.net_wrd_len #src embedding size
-        Hs = np.divide(self.config.net_blstm_lens, 2) #src lstm sizes (half cells for each direction)
+        Hs = self.config.net_blstm_lens #src lstm sizes (half cells for each direction)
+        Cs = self.config.net_conv_lens #src conv layers
 
-        self.embed_src = self.embed_src_words(self.input_src, Vs, Es, K) #[B,Ss,Es]
-        self.out_src, self.last_src = self.bi_lstm(Hs, self.embed_src, self.len_src, K) #out_src is [B,Ss,Hs*2] or [B,Ss,Es] #last_src is [B,Hs[-1]*2] or []
-        self.embed_snt_src = self.embed_sentence(self.out_src, self.last_src, self.len_src) #embed_snt is [B,Hs*2] or [B,Es] if not bi-lstm layers
+        self.embed_src = self.wembedding(self.input_src, Vs, Es, K) #[B,Ss,Es]
+        self.out_src, self.last_src = self.conv(Cs, self.embed_src, K)
+        self.out_src, self.last_src = self.bilstm(Hs, self.out_src, self.len_src, K) #out_src is [B,Ss,Hs*2] or [B,Ss,Es] #last_src is [B,Hs[-1]*2] or []
+        self.embed_snt_src = self.sembedding(self.out_src, self.last_src, self.len_src) #embed_snt is [B,Hs*2] or [B,Es] if not bi-lstm layers
 
     def add_encoder_tgt(self):
         K = 1.0-self.config.dropout   # keep probability for embeddings dropout Ex: 0.7
@@ -128,11 +130,13 @@ class Model():
         Ss = tf.shape(self.input_src)[1] #seq_length
         Vs = self.config.vocab.length #src vocab
         Es = self.config.net_wrd_len #src embedding size
-        Hs = np.divide(self.config.net_blstm_lens, 2) #src lstm sizes (half cells for each direction)
+        Hs = self.config.net_blstm_lens #src lstm sizes (half cells for each direction)
+        Cs = self.config.net_conv_lens #src conv layers
 
-        self.embed_tgt = self.embed_src_words(self.input_tgt, Vs, Es, K)
-        self.out_tgt, self.last_tgt = self.bi_lstm(Hs, self.embed_tgt, self.len_tgt, K) 
-        self.embed_snt_tgt = self.embed_sentence(self.out_tgt, self.last_tgt, self.len_tgt)
+        self.embed_tgt = self.wembedding(self.input_tgt, Vs, Es, K)
+        self.out_tgt, self.last_tgt = self.conv(Cs, self.embed_tgt, K)
+        self.out_tgt, self.last_tgt = self.bilstm(Hs, self.out_tgt, self.len_tgt, K) 
+        self.embed_snt_tgt = self.sembedding(self.out_tgt, self.last_tgt, self.len_tgt)
 
 #        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
 #        sys.stderr.write("Total Enc parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
@@ -148,15 +152,12 @@ class Model():
         Et = self.config.net_wrd_len #tgt embedding size (same as src)
         Ht = self.config.net_lstm_len #tgt lstm size
 
-        with tf.variable_scope("embed_snt2lstm_initial",reuse=tf.AUTO_REUSE):
+        with tf.variable_scope("sembedding2lstm_initial",reuse=tf.AUTO_REUSE):
             initial_state_h = tf.layers.dense(self.embed_snt_src, Ht, use_bias=False) # Hs*2 or Es => Ht
             initial_state_c = tf.zeros(tf.shape(initial_state_h))
             self.initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
 
-        with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE):
-            self.LT = tf.get_variable(initializer = self.embedding_initialize(Vt, Et, self.config.embed), dtype=tf.float32, name="embeddings")
-            self.embed_tgt = tf.nn.embedding_lookup(self.LT, self.input_tgt, name="embed_tgt") #[B, St, Et]
-            self.embed_tgt = tf.nn.dropout(self.embed_tgt, keep_prob=K)
+        self.embed_tgt = self.wembedding(self.input_tgt, Vt, Et, K)
 
         with tf.variable_scope("lstm_tgt",reuse=tf.AUTO_REUSE):
             self.embed_snt_src_extend = tf.expand_dims(self.embed_snt_src, 1) #[B,Hs*2] or [B,Es] => [B,1,Hs*2] or [B,1,Es]
@@ -209,7 +210,7 @@ class Model():
         if self.config.src_tst: ###inference
             if self.config.tgt_tst: ###bitext
                 self.add_encoder_tgt()
-        else:
+        else: #training
             self.add_decoder()
             self.add_loss()
             self.add_train()
@@ -359,7 +360,7 @@ class Model():
             toks += tst.ntgt_tok
         stoks_per_sec = toks / (end_time - ini_time)
         sents_per_sec = tst.len / (end_time - ini_time)
-        sys.stderr.write("Analysed {} sentences with {}/{} tokens in {:.2f} seconds => {:.2f} toks/sec {:.2f} sents/sec (model/test loading times not considered)\n".format(tst.len, tst.nsrc_tok, tst.ntgt_tok, end_time - ini_time, stoks_per_sec, sents_per_sec))
+        sys.stderr.write("Analysed {} sentences with {}/{} tokens in {:.2f} seconds => {:.2f} toks/sec {:.2f} sents/sec (model/testset loading times not considered)\n".format(tst.len, tst.nsrc_tok, tst.ntgt_tok, end_time - ini_time, stoks_per_sec, sents_per_sec))
 
     def compute_sim(self, src, tgt):
         ### src and tgt are already normalized 
