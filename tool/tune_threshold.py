@@ -5,29 +5,31 @@ import random
 import numpy as np
 from collections import defaultdict
 
-def insert(str, str2):
-    VEC = str.split(' ')
-    VEC2 = str2.split(' ')
-#    print("VEC {}".format(VEC))
-#    print("\tVEC2 {}".format(VEC2))
-    range2 = sorted(np.random.randint(len(VEC2), size=2)) #list of 2 (sorted) integers in the range [0,n)
-#    print("\trange2 {}".format(range2))
-    slice2 = VEC2[range2[0]:range2[1]+1]
-#    print("\tslice2 {}".format(slice2))
+def insert(VEC, VEC2):
+#    print("INSERT")
+#    print("VEC {}".format(" ".join(VEC)))
+#    print("\tVEC2 {}".format(" ".join(VEC2)))
+    first2 = np.random.randint(len(VEC2)-minrange+1)
+    last2 = np.random.randint(first2+minrange-1,min(len(VEC2),first2+maxrange))
+#    print("\t[{}, {}]".format(first2,last2))
+    slice2 = VEC2[first2:last2+1]
+#    print("\tslice2 {}".format(" ".join(slice2)))
     into1 = np.random.randint(len(VEC)) #[0,n)
 #    print("\tinto1 {}".format(into1))
     VEC[into1:into1] = slice2 #insert slice2 into VEC at position into
-#    print("\tVEC {}".format(VEC))
+#    print("\tVEC {}".format(" ".join(VEC)))
     return " ".join(VEC)
 
-def delete(str):
-    VEC = str.split(' ')
-#    print("VEC {}".format(VEC))
-    range1 = sorted(np.random.randint(len(VEC), size=2)) #list of 2 (sorted) integers in the range [0,n)
-#    print("\trange1 {}".format(range1))
-    del VEC[range1[0]:range1[1]+1]
-#    print("\tVEC {}".format(VEC))
+def delete(VEC):
+#    print("DELETE")
+#    print("VEC {}".format(" ".join(VEC)))
+    first1 = np.random.randint(len(VEC)-minrange+1)
+    last1 = np.random.randint(first1+minrange-1,min(len(VEC),first1+maxrange))
+#    print("\t[{}, {}]".format(first1,last1))
+    del VEC[first1:last1+1]
+#    print("\tVEC {}".format(" ".join(VEC)))
     return " ".join(VEC)
+
 
 def do_parallel(i):
     src, tgt = data[i]
@@ -44,21 +46,38 @@ def do_uneven(i):
 
 def do_insert(i):
     src, tgt = data[i]
+    SRC = src.split(' ')
+    TGT = tgt.split(' ')
+    if len(SRC)<=minrange or len(TGT)<=minrange: return
+
     j = (i + np.random.randint(1, len(data)-1)) % len(data)
     src2, tgt2 = data[j]
+    SRC2 = src2.split(' ')
+    TGT2 = tgt2.split(' ')
+    if len(SRC2)<=minrange or len(TGT2)<=minrange: return
+
     if np.random.uniform(0, 1) >= 0.5:
-        print("Is\t{}\t{}".format(insert(src,src2), tgt))
+        print("Is\t{}\t{}".format(insert(SRC,SRC2), tgt))
     else:
-        print("It\t{}\t{}".format(src, insert(tgt,tgt2)))
+        print("It\t{}\t{}".format(src, insert(TGT,TGT2)))
 
 def do_delete(i):
     src, tgt = data[i]
+    SRC = src.split(' ')
+    TGT = tgt.split(' ')
+    if len(SRC)<=minrange or len(TGT)<=minrange: return
+
     if np.random.uniform(0, 1) >= 0.5:
-        print("Ds\t{}\t{}".format(delete(src), tgt))
+        print("Ds\t{}\t{}".format(delete(SRC), tgt))
     else:
-        print("Dt\t{}\t{}".format(src, delete(tgt)))
+        print("Dt\t{}\t{}".format(src, delete(TGT)))
 
 
+#print(sorted(np.random.randint(10, size=100)))
+#sys.exit()
+
+minrange = 5
+maxrange = 10
 do_threshold = False
 do_generate = False
 seed = 1234
@@ -77,7 +96,11 @@ INPUT must be, either:
 
 while len(sys.argv):
     tok = sys.argv.pop(0)
-    if (tok=="-mode" and len(sys.argv)):
+    if (tok=="-minrange" and len(sys.argv)):
+        minrange = int(sys.argv.pop(0))
+    elif (tok=="-maxrange" and len(sys.argv)):
+        maxrange = int(sys.argv.pop(0))
+    elif (tok=="-mode" and len(sys.argv)):
         do_generate = True
         mode = sys.argv.pop(0)
     elif (tok=="-threshold"):
