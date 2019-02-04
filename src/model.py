@@ -43,11 +43,11 @@ class Model():
         self.config = config
         self.sess = None
 
-    def wembedding(self, input, Vs, Es, K):
+    def wembedding(self, input, V, E, K):
         with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
-            self.LT = tf.get_variable(initializer = tf.random_uniform([Vs, Es], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
+            self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
-            embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,Es]
+            embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
         return embedded
 
     def bilstm(self, layers, input, length, keep):
@@ -61,19 +61,21 @@ class Model():
                     cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
                     cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=keep)
                     (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=length, dtype=tf.float32)
+
                     input = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
             last = tf.concat([last_src_fw.h, last_src_bw.h], axis=1) #[B, layers[-1]*2] (i take h since last_state is a tuple with (c,h))
         return input, last
 
-    def conv(self, layers, input, keep):
+    def conv(self, layers, input, k):
         ### input are the embedded source words [B,Ss,Es]
         last = []
-        if len(layers)>0 and layers[0]>0:
+        if len(layers)>0 and layers[0]!='0':
             for i,l in enumerate(layers):
-                filts, kernel_size = map(int,l.split(':'))
+                kernel_size,filts  = map(int,l.split(':'))
                 with tf.variable_scope("conv_{}".format(i), reuse=tf.AUTO_REUSE):
                     # Convolution Layer
                     input = tf.layers.conv1d(inputs=input, filters=filts, kernel_size=kernel_size, padding="same", activation=tf.nn.relu)
+                    input = tf.nn.dropout(input, keep_prob=K)
         return input, last
 
     def sembedding(self, out_src, last_src, len_src):
@@ -152,7 +154,7 @@ class Model():
         Et = self.config.net_wrd_len #tgt embedding size (same as src)
         Ht = self.config.net_lstm_len #tgt lstm size
 
-        with tf.variable_scope("sembedding2lstm_initial",reuse=tf.AUTO_REUSE):
+        with tf.variable_scope("sembedding2dec_initial",reuse=tf.AUTO_REUSE):
             initial_state_h = tf.layers.dense(self.embed_snt_src, Ht, use_bias=False) # Hs*2 or Es => Ht
             initial_state_c = tf.zeros(tf.shape(initial_state_h))
             self.initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
@@ -206,6 +208,7 @@ class Model():
 
     def build_graph(self):
         self.add_placeholders()
+        print("A")
         self.add_encoder_src()  
         if self.config.src_tst: ###inference
             if self.config.tgt_tst: ###bitext

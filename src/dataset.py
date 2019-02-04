@@ -10,100 +10,10 @@ import time
 import gzip
 from collections import defaultdict
 from tokenizer import build_tokenizer
+from vocab import Vocab
 
 reload(sys)
 sys.setdefaultencoding('utf8')
-
-idx_unk = 0
-str_unk = "<unk>"
-
-idx_pad = 1
-str_pad = "<pad>"
-
-idx_bos = 2
-str_bos = "<bos>"
-
-idx_eos = 3
-str_eos = "<eos>"
-
-'''
-class Embeddings():
-
-    def __init__(self, voc, length):
-        self.dim = length
-        # i need an embedding for each word in voc
-        # embedding matrix must have tokens in same order than voc 0:<unk>, 1:<pad>, 2:le, ...
-        self.matrix = []
-        for tok in voc: 
-            self.matrix.append(np.random.normal(0, 1.0, self.dim)) 
-        self.matrix = np.asarray(self.matrix, dtype=np.float32)
-        self.matrix = self.matrix / np.sqrt((self.matrix ** 2).sum(1))[:, None]
-'''
-class Vocab():
-
-    def __init__(self, dict_file, net_lid=[]):
-        self.tok_to_idx = {}
-        self.idx_to_tok = []
-
-        self.idx_to_tok.append(str_unk)
-        self.tok_to_idx[str_unk] = len(self.tok_to_idx) #0
-        self.idx_unk = idx_unk
-
-        self.idx_to_tok.append(str_pad)
-        self.tok_to_idx[str_pad] = len(self.tok_to_idx) #1
-        self.idx_pad = idx_pad
-
-        self.idx_to_tok.append(str_bos)
-        self.tok_to_idx[str_bos] = len(self.tok_to_idx) #2
-        self.idx_bos = idx_bos
-
-        self.idx_to_tok.append(str_eos)
-        self.tok_to_idx[str_eos] = len(self.tok_to_idx) #3
-        self.idx_eos = idx_eos
-
-        #LID tokens used in train/valid set are also included
-        for lid in net_lid:
-            if lid in self.tok_to_idx:
-                sys.stderr.write('error: repeated key \'{}\' in vocab (check if LIDs exist in vocab)\n'.format(lid))
-                sys.exit()
-            self.idx_to_tok.append(lid)
-            self.tok_to_idx[lid] = len(self.tok_to_idx)
-
-        nline = 0
-        with io.open(dict_file, 'rb') as f:
-            for line in f:
-                nline += 1
-                line = line.strip()
-                if line in self.tok_to_idx:
-                    sys.stderr.write('error: repeated key \'{}\' in vocab (check if LIDs exist in vocab)\n'.format(lid))
-                    sys.exit()
-                self.idx_to_tok.append(line)
-                self.tok_to_idx[line] = len(self.tok_to_idx)
-
-        self.length = len(self.idx_to_tok)
-        sys.stderr.write('Read vocab ({} entries) {}\n'.format(self.length, dict_file))
-
-    def __len__(self):
-        return len(self.idx_to_tok)
-
-    def __iter__(self):
-        for tok in self.idx_to_tok:
-            yield tok
-
-    def exists(self, s):
-        return s in self.tok_to_idx
-
-    def get(self,s):
-        if type(s) == int: ### I want the string
-            if s < len(self.idx_to_tok): return self.idx_to_tok[s]
-            else:
-                sys.stderr.write('error: key \'{}\' not found in vocab\n'.format(s))
-                sys.exit()
-        ### I want the index
-        if s not in self.tok_to_idx: 
-            return idx_unk
-        return self.tok_to_idx[s]
-
 
 class Dataset():
 
@@ -112,18 +22,18 @@ class Dataset():
         self.max_sents = config.max_sents
         self.data = []
         self.data_batch = []
-        self.maxtoks = 512
+        self.maxtoksperline = 512
+        self.is_inference = False
+        self.is_bitext = False
 
         ### check number of fSRC/fTGT/LID parameters are correct
         if len(fSRC) and len(fSRC)==len(fTGT) and len(fSRC)==len(LID): 
-            self.is_inference = False ### training
-            self.is_bitext = True
+            self.is_bitext = True ### training
         elif len(fSRC) and len(fSRC)==len(fTGT) and len(LID)==0:       
             self.is_inference = True ### inference with src/tgt
             self.is_bitext = True
         elif len(fSRC) and len(fTGT)==0 and len(LID)==0:               
             self.is_inference = True ### inference with src
-            self.is_bitext = False
         else:
             sys.stderr.write('error: bad number of input files {} {} {}\n'.format(len(fSRC),len(fTGT),len(LID)))
             sys.exit()
@@ -171,12 +81,12 @@ class Dataset():
                     src = sline.split(' ')
 
                 ### truncate if too long even for inference
-                if len(src)>self.maxtoks: 
-                    sys.stderr.write('warning: src sentence sized of {} tokens truncated to {}\n'.format(len(src),self.maxtoks))
-                    src = src[0:self.maxtoks]
+                if len(src)>self.maxtoksperline: 
+                    sys.stderr.write('warning: src sentence sized of {} tokens truncated to {}\n'.format(len(src),self.maxtoksperline))
+                    src = src[0:self.maxtoksperline]
 
-                src.insert(0,str_bos)
-                src.append(str_eos)
+                src.insert(0,self.vocab.str_bos)
+                src.append(self.vocab.str_eos)
                 ### src is '<bos> my sentence <eos>'
                 #print("src: "+" ".join([str(e) for e in src]))
 
@@ -189,15 +99,15 @@ class Dataset():
                         tgt = tline.split(' ')
 
                     ### truncate if too long even for inference
-                    if len(tgt)>self.maxtoks: 
-                        sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to {}\n'.format(len(tgt),self.maxtoks))
-                        tgt = tgt[0:self.maxtoks]
+                    if len(tgt)>self.maxtoksperline: 
+                        sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to {}\n'.format(len(tgt),self.maxtoksperline))
+                        tgt = tgt[0:self.maxtoksperline]
 
                     if self.is_inference: 
-                        tgt.insert(0,str_bos)
+                        tgt.insert(0,self.vocab.str_bos)
                     else: ### is inference
                         tgt.insert(0,str_lid)
-                    tgt.append(str_eos)
+                    tgt.append(self.vocab.str_eos)
                 ### tgt is: LID|<bos> my sentence <eos>
                 #print("tgt: "+" ".join([str(e) for e in tgt]))
 
@@ -249,7 +159,7 @@ class Dataset():
         nunk = 0
         for s in src:
             isrc.append(self.vocab.get(s))
-            if isrc[-1] == idx_unk: nunk += 1
+            if isrc[-1] == self.vocab.idx_unk: nunk += 1
 #            print(s,isrc[-1])
 #        print("isrc:{}:".format(len(isrc)), isrc)
         return isrc, nunk
@@ -261,7 +171,7 @@ class Dataset():
         if self.is_bitext:
             for i,t in enumerate(tgt): 
                 idx_t = self.vocab.get(t)
-                if idx_t == idx_unk: nunk += 1
+                if idx_t == self.vocab.idx_unk: nunk += 1
 #                print(t,idx_t)
                 if self.is_inference: #all tokens are used <bos> my sentence <eos>
                     itgt.append(idx_t)
@@ -294,8 +204,8 @@ class Dataset():
         SRC, TGT, REF, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, LEN_SRC, LEN_TGT = [], [], [], [], [], [], [], [], []
         max_src, max_tgt = 0, 0
         for src, tgt, isrc, itgt, iref, nsrc_unk, ntgt_unk in self.data_batch[index]:
-            self.nsrc_tok += len(src)-2
-            self.ntgt_tok += len(tgt)-2
+            self.nsrc_tok += max(0,len(src)-2)
+            self.ntgt_tok += max(0,len(tgt)-2)
             self.nsrc_unk += nsrc_unk
             self.ntgt_unk += ntgt_unk
             #### update max lenghts
@@ -312,9 +222,9 @@ class Dataset():
             LEN_TGT.append(len(itgt)) ### both iref and itgt have the same length
         ### add padding 
         for i in range(len(SRC)):
-            while len(SRC[i]) < max_src: SRC[i].append(idx_pad) #<pad>
-            while len(TGT[i]) < max_tgt: TGT[i].append(idx_pad) #<pad>
-            while len(REF[i]) < max_tgt: REF[i].append(idx_pad) #<pad>
+            while len(SRC[i]) < max_src: SRC[i].append(self.vocab.idx_pad) #<pad>
+            while len(TGT[i]) < max_tgt: TGT[i].append(self.vocab.idx_pad) #<pad>
+            while len(REF[i]) < max_tgt: REF[i].append(self.vocab.idx_pad) #<pad>
 #            print("TGT",TGT[i])
 #            print("REF",REF[i])        
         #print("BATCH max_src={} max_tgt={}".format(max_src,max_tgt))

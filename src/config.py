@@ -6,7 +6,7 @@ import os
 import sys
 import json
 from shutil import copyfile
-from dataset import Vocab #, Embeddings
+from vocab import Vocab
 from tokenizer import build_tokenizer
 
 class Config():
@@ -246,7 +246,7 @@ class Config():
             with open(self.mdir + "/topology", 'w') as f: 
                 for opt, val in vars(self).items():
                     if not opt.startswith("net"): continue
-                    if opt=="net_blstm_lens" or opt=="net_lid":
+                    if opt=="net_blstm_lens" or opt=="net_conv_lens" or opt=="net_lid":
                         if len(val)>0: 
                             sval = ",".join([str(v) for v in val])
                             f.write("{} {}\n".format(opt,sval))
