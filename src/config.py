@@ -35,7 +35,7 @@ class Config():
    -net_enc        STRING : encoder layers (comma-separated list) Ex: c-512-3-0.3,b-512-0.3,b-512-0.3
                             Each layer follows the next formats:
                                 -Convolutional (c-fiters-kernel_size-dropout)
-                                -Bi-LSTM (b-hidden_size-dropout) 
+                                -Bi-LSTM       (b-hidden_size-dropout) 
                                 -LSTM
                                 -GRU
    -net_snt        STRING : src sentence embedding: last, mean, max
@@ -147,7 +147,6 @@ class Config():
             elif (tok=="-net_opt" and len(argv)):        self.net_opt = argv.pop(0)
             elif (tok=="-net_lid" and len(argv)):        self.net_lid = argv.pop(0)
             #optimization
-            elif (tok=="-dropout" and len(argv)):        self.dropout = float(argv.pop(0))
             elif (tok=="-opt_lr" and len(argv)):         self.opt_lr = float(argv.pop(0))
             elif (tok=="-opt_decay" and len(argv)):      self.opt_decay = float(argv.pop(0))
             elif (tok=="-opt_minlr" and len(argv)):      self.opt_minlr = float(argv.pop(0))
@@ -198,7 +197,6 @@ class Config():
             sys.exit()
         argv = self.read_topology()
         self.parse(argv)
-        self.dropout = 0.0
         self.read_vocab_token()
         return  
 
