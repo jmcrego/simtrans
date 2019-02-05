@@ -40,6 +40,7 @@ class Dataset():
 
         ### check lid's exist in vocab
         for lid in LID:
+            lid = self.vocab.beg_delim + lid + self.vocab.end_delim
             if not self.vocab.exists(lid):
                 sys.stderr.write('error: LID={} does not exists in vocab\n'.format(lid))
                 sys.exit()
@@ -60,7 +61,7 @@ class Dataset():
                     sys.exit()
                 sys.stderr.write('Reading {}\n'.format(ftgt))
             if len(LID): 
-                str_lid = LID[ifile]
+                str_lid = self.vocab.beg_delim + LID[ifile] + self.vocab.end_delim
                 sys.stderr.write('Using LID={}\n'.format(str_lid))
 
             ### fsrc
