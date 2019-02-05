@@ -23,6 +23,8 @@ while len(sys.argv):
         tokopts['case_feature'] = True
     elif tok=="-mode" and len(sys.argv):
 		tokopts['mode'] = sys.argv.pop(0)
+    elif tok=="-bpe" and len(sys.argv):
+		tokopts['bpe_model'] = sys.argv.pop(0)
     elif tok=="-vocabulary" and len(sys.argv):
   		tokopts['vocabulary'] = sys.argv.pop(0)
     elif tok=="-h":
