@@ -181,6 +181,7 @@ class Config():
                 tok_opt = json.load(jsonfile)
                 tok_opt["vocabulary"] = self.mdir + '/vocab'
                 self.token = build_tokenizer(tok_opt)
+                print('built tokenizer')
 
     def inference(self):
         if not self.epoch:
