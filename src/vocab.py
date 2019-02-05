@@ -17,6 +17,10 @@ class Vocab():
 
     def __init__(self, dict_file, net_lid=[]):
 
+        if net_lid is None:
+            sys.stderr.write('error: -net_lid option must be set\n')
+            sys.exit()
+
         self.beg_delim = '｟'
         self.end_delim = '｠'
 
@@ -44,7 +48,7 @@ class Vocab():
         self.tok_to_idx[self.str_eos] = len(self.tok_to_idx) #3
 
         #LID tokens used in train/valid set are also included
-        for lid in net_lid:
+        for lid in net_lid.split(','):
             lid = self.beg_delim + lid + self.end_delim
             if lid in self.tok_to_idx:
                 sys.stderr.write('error: repeated key \'{}\' in vocab (check if LIDs exist in vocab)\n'.format(lid))

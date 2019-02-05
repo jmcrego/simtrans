@@ -21,16 +21,22 @@ while len(sys.argv):
     tok = sys.argv.pop(0)
     if tok=="-json" and len(sys.argv):
     	fjson = sys.argv.pop(0)
+
     elif tok=="-lc":
         tokopts['case_feature'] = True
-    elif tok=="-mode" and len(sys.argv):
-		tokopts['mode'] = sys.argv.pop(0)
-    elif tok=="-bpe_model" and len(sys.argv):
-		tokopts['bpe_model'] = sys.argv.pop(0)
+
     elif tok=="-joiner_annotate":
 		tokopts['joiner_annotate'] = True
+
+    elif tok=="-mode" and len(sys.argv):
+		tokopts['mode'] = sys.argv.pop(0)
+
+    elif tok=="-bpe_model" and len(sys.argv):
+		tokopts['bpe_model_path'] = sys.argv.pop(0)
+
     elif tok=="-vocabulary" and len(sys.argv):
   		tokopts['vocabulary'] = sys.argv.pop(0)
+
     elif tok=="-h":
 		sys.stderr.write("{}".format(usage))
 		sys.exit()

@@ -112,7 +112,7 @@ class Dataset():
                 ### tgt is: LID|<bos> my sentence <eos>
                 #print("tgt: "+" ".join([str(e) for e in tgt]))
 
-                if self.is_inference or config.seq_size==0 or (len(src)-2<=config.seq_size and len(tgt)-2<=config.seq_size):
+                if self.is_inference or config.max_seq_size==0 or (len(src)-2<=config.max_seq_size and len(tgt)-2<=config.max_seq_size):
                     self.data.append([len(src)-2,src,tgt])
     
             fs.close()

@@ -30,23 +30,25 @@ class Config():
    -voc              FILE : src/tgt vocab (needed to initialize learning)
    -tok              FILE : src/tgt json onmt tokenization options 
 
-   -seq_size          INT : src sentences larger than this number of words are filtered out [50]
-
    Network topology:
-   -net_wrd_len       INT : word src/tgt embeddings size [320]
-   -net_conv_lens  STRING : kernel:units of each conv layer [3:1024,5:1024] (2 layers with 1024 cells and kernel sizes 3 and 5 respectively) []
-   -net_blstm_lens STRING : units of src bi-lstm layers [1024,1024,1024] (3 layers with 1024 cells for each direction)
-   -net_sentence   STRING : how src sentence embedding is formed from previous layer: last, mean, max [max]
-   -net_lstm_len      INT : units of the tgt lstm layer [2048]
+   -net_wrd        STRING : word src/tgt embeddings size Ex: 256-0.3 (embedding_size-dropout)
+   -net_enc        STRING : encoder layers (comma-separated list) Ex: c-512-3-0.3,b-512-0.3,b-512-0.3
+                            Each layer follows the next formats:
+                                -Convolutional (c-fiters-kernel_size-dropout)
+                                -Bi-LSTM (b-hidden_size-dropout) 
+                                -LSTM
+                                -GRU
+   -net_snt        STRING : src sentence embedding: last, mean, max
+   -net_dec        STRING : decoder layers (comma-separated list) Ex: l-2048-0.2 (type-embedding_size-dropout)
+   -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop
+   -net_lid        STRING : list of LID tags (comma-separated list) Ex: English,French,German
 
-   -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop [sgd]
-   -net_lid        STRING : vocabulary of LID tags to be included in tgt_voc [] (Ex: LIDisEnglish,LIDisFrench,LIDisGerman)
-
-   -dropout         FLOAT : dropout ratio applided to different layers [0.3]
-   -opt_lr          FLOAT : initial learning rate [1.0]                              (use 0.0002 for adam)
-   -opt_decay       FLOAT : learning rate decay value when opt_method='sgd' [0.9]    (use 0.98 for adam)
-   -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.005] (use 0.0 for adam)
+   Training/Optimization:
+   -opt_lr          FLOAT : initial learning rate [0.0001]
+   -opt_decay       FLOAT : learning rate decay value [0.96]
+   -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.0]
    -clip            FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
+   -max_seq_size      INT : src sentences larger than this number of words are filtered out [50]
    -max_sents         INT : Consider this number of sentences per epoch (0 for all) [0]
    -n_epochs          INT : train for this number of epochs [1]
    -reports           INT : report every this many batches [100]
@@ -69,7 +71,7 @@ class Config():
 """.format(sys.argv.pop(0))
 
         self.mdir = None
-        self.seq_size = 50
+        self.max_seq_size = 50
         self.batch_size = 32
         self.seed = 12345
         #files
@@ -85,18 +87,16 @@ class Config():
 #        self.embed = None #embedding
         self.token = None #onmt tokenizer
         #network
-        self.net_wrd_len = 320
-        self.net_blstm_lens = []
-        self.net_conv_lens = []
-        self.net_sentence = 'max'
-        self.net_lstm_len = 2048
-        self.net_opt = 'sgd'
-        self.net_lid = []
+        self.net_wrd = None
+        self.net_enc = None
+        self.net_snt = None
+        self.net_dec = None
+        self.net_opt = None
+        self.net_lid = None
         #optimization
-        self.dropout = 0.3
-        self.opt_lr = 1.0
-        self.opt_decay = 0.9
-        self.opt_minlr = 0.005
+        self.opt_lr = 0.0001
+        self.opt_decay = 0.96
+        self.opt_minlr = 0.0
         self.clip = 0.0
         self.max_sents = 0
         self.n_epochs = 1
@@ -127,7 +127,7 @@ class Config():
         while len(argv):
             tok = argv.pop(0)
             if (tok=="-mdir" and len(argv)):             self.mdir = argv.pop(0)
-            elif (tok=="-seq_size" and len(argv)):       self.seq_size = int(argv.pop(0))
+            elif (tok=="-max_seq_size" and len(argv)):   self.max_seq_size = int(argv.pop(0))
             elif (tok=="-batch_size" and len(argv)):     self.batch_size = int(argv.pop(0))
             elif (tok=="-seed" and len(argv)):           self.seed = int(argv.pop(0))
             #files
@@ -140,13 +140,12 @@ class Config():
             elif (tok=="-voc" and len(argv)):            self.voc = argv.pop(0)
             elif (tok=="-tok" and len(argv)):            self.tok = argv.pop(0)
             #network
-            elif (tok=="-net_wrd_len" and len(argv)):    self.net_wrd_len = int(argv.pop(0))
-            elif (tok=="-net_blstm_lens" and len(argv)): self.net_blstm_lens = map(int, argv.pop(0).split(','))
-            elif (tok=="-net_conv_lens" and len(argv)):  self.net_conv_lens = argv.pop(0).split(',')
-            elif (tok=="-net_sentence" and len(argv)):   self.net_sentence = argv.pop(0)
-            elif (tok=="-net_lstm_len" and len(argv)):   self.net_lstm_len = int(argv.pop(0))
+            elif (tok=="-net_wrd" and len(argv)):        self.net_wrd = argv.pop(0)
+            elif (tok=="-net_enc" and len(argv)):        self.net_enc = argv.pop(0)
+            elif (tok=="-net_snt" and len(argv)):        self.net_snt = argv.pop(0)
+            elif (tok=="-net_dec" and len(argv)):        self.net_dec = argv.pop(0)
             elif (tok=="-net_opt" and len(argv)):        self.net_opt = argv.pop(0)
-            elif (tok=="-net_lid" and len(argv)):        self.net_lid = argv.pop(0).split(',')
+            elif (tok=="-net_lid" and len(argv)):        self.net_lid = argv.pop(0)
             #optimization
             elif (tok=="-dropout" and len(argv)):        self.dropout = float(argv.pop(0))
             elif (tok=="-opt_lr" and len(argv)):         self.opt_lr = float(argv.pop(0))
@@ -200,7 +199,6 @@ class Config():
         argv = self.read_topology()
         self.parse(argv)
         self.dropout = 0.0
-        #read vocab and token
         self.read_vocab_token()
         return  
 
@@ -221,7 +219,6 @@ class Config():
             ### options in topology file override those passed in command line
             argv = self.read_topology()
             self.parse(argv)
-            #read vocab and token
             self.read_vocab_token()
             ### update last epoch
             for e in range(999,0,-1):
@@ -240,17 +237,10 @@ class Config():
             if self.tok: copyfile(self.tok, self.mdir + "/token")
             #read vocab and token
             self.read_vocab_token()
-            #create embeddings
-#            self.embed = Embeddings(self.vocab,self.net_wrd_len)
             #write topology file
             with open(self.mdir + "/topology", 'w') as f: 
                 for opt, val in vars(self).items():
-                    if not opt.startswith("net"): continue
-                    if opt=="net_blstm_lens" or opt=="net_conv_lens" or opt=="net_lid":
-                        if len(val)>0: 
-                            sval = ",".join([str(v) for v in val])
-                            f.write("{} {}\n".format(opt,sval))
-                    else:
+                    if opt.startswith("net"): 
                         f.write("{} {}\n".format(opt,val))
             sys.stderr.write("learning from scratch\n")
         return  
@@ -261,7 +251,7 @@ class Config():
         file = self.mdir + "/epoch"+str(self.last_epoch)+".config"
         with open(file,"w") as f:
             for name, val in vars(self).items():
-                if name=="usage" or name.startswith("embed") or name.startswith("vocab") or name.startswith("token"): continue
+                if name=="usage" or name.startswith("vocab") or name.startswith("token"): continue
                 f.write("{} {}\n".format(name,val))
 
     def read_topology(self):
