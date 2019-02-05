@@ -10,6 +10,8 @@ tokopts = {'mode': 'aggressive', 'vocabulary': ''}
 usage = """usage: {}
    -json       FILE : json file containing tokenization options (mode, vocabulary, ...)
    -mode       MODE : tokenization mode: aggressive, conservative [aggressive]
+   -bpe_model  FILE : 
+   -joiner_annotate : use joiner annotate
    -lc              : lowercase all data (use -case_feature)
    -vocabulary FILE : vocabulary file []
    -h               : this message
@@ -23,8 +25,10 @@ while len(sys.argv):
         tokopts['case_feature'] = True
     elif tok=="-mode" and len(sys.argv):
 		tokopts['mode'] = sys.argv.pop(0)
-    elif tok=="-bpe" and len(sys.argv):
+    elif tok=="-bpe_model" and len(sys.argv):
 		tokopts['bpe_model'] = sys.argv.pop(0)
+    elif tok=="-joiner_annotate":
+		tokopts['joiner_annotate'] = True
     elif tok=="-vocabulary" and len(sys.argv):
   		tokopts['vocabulary'] = sys.argv.pop(0)
     elif tok=="-h":
