@@ -5,10 +5,12 @@ import json
 from tokenizer import build_tokenizer
 
 fjson = None
+case = False
 tokopts = {'mode': 'aggressive', 'vocabulary': ''}
 usage = """usage: {}
    -json       FILE : json file containing tokenization options (mode, vocabulary, ...)
    -mode       MODE : tokenization mode: aggressive, conservative [aggressive]
+   -lc              : lowercase all data (use -case_feature)
    -vocabulary FILE : vocabulary file []
    -h               : this message
 """.format(sys.argv.pop(0))
@@ -16,11 +18,13 @@ usage = """usage: {}
 while len(sys.argv):
     tok = sys.argv.pop(0)
     if tok=="-json" and len(sys.argv):
-        fjson = sys.argv.pop(0)
+    	fjson = sys.argv.pop(0)
+    elif tok=="-lc":
+        tokopts['case_feature'] = True
     elif tok=="-mode" and len(sys.argv):
 		tokopts['mode'] = sys.argv.pop(0)
     elif tok=="-vocabulary" and len(sys.argv):
-		tokopts['vocabulary'] = sys.argv.pop(0)
+  		tokopts['vocabulary'] = sys.argv.pop(0)
     elif tok=="-h":
 		sys.stderr.write("{}".format(usage))
 		sys.exit()
