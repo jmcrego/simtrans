@@ -99,7 +99,7 @@ class Model():
 
     def sembedding(self, out_src, last_src, layer, l):
         if layer == 'last':
-            if len(last_src) == 0: 
+            if tf.size(last_src) == 0: 
                 sys.stderr.write("error: -net_snt 'last' cannot be used with the last -net_enc layer\n")
                 sys.exit()
             return last_src #[B,Hs[-1]*2]
