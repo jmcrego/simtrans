@@ -4,7 +4,7 @@ import numpy as np
 import io
 import os
 import sys
-import json
+import yaml
 from shutil import copyfile
 from vocab import Vocab
 from tokenizer import build_tokenizer
@@ -28,7 +28,7 @@ class Config():
 *  -tgt_val_lid      FILE : lid of tgt validation files (comma-separated)
 
    -voc              FILE : src/tgt vocab (needed to initialize learning)
-   -tok              FILE : src/tgt (json) onmt tokenization options
+   -tok              FILE : src/tgt (yaml) onmt tokenization options
 
    Network topology:
    -net_wrd        STRING : word src/tgt embeddings size Ex: 256-0.3 (embedding_size-dropout)
@@ -177,8 +177,8 @@ class Config():
         ### read tokenizer
         if os.path.exists(self.mdir + '/token'): 
             self.tok = self.mdir + '/token'
-            with open(self.mdir + '/token') as jsonfile: 
-                tok_opt = json.load(jsonfile)
+            with open(self.mdir + '/token') as yamlfile: 
+                tok_opt = yaml.load(yamlfile)
                 self.token = build_tokenizer(tok_opt)
                 print('built tokenizer')
 
@@ -233,8 +233,8 @@ class Config():
             copyfile(self.voc, self.mdir + "/vocab")
             #copy tokenizers if exist
             if self.tok is not None: 
-                with open(self.tok) as jsonfile: 
-                    tok_opt = json.load(jsonfile)
+                with open(self.tok) as yamlfile: 
+                    tok_opt = yaml.load(yamlfile)
                     print(tok_opt)
                     ### replaces/creates vocab option in token
                     tok_opt["vocabulary"] = self.mdir + '/vocab'
@@ -244,7 +244,7 @@ class Config():
                         ### replace token file with new bpe_model_path 
                         tok_opt['bpe_model_path'] = self.mdir + '/bpe'
                         with open(self.mdir + '/token', 'w') as outfile: 
-                            json.dump(tok_opt, outfile)
+                            yaml.dump(tok_opt, outfile)
                     else: 
                         ### copy token file
                         copyfile(self.tok, self.mdir + "/token")
