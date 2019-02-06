@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import tensorflow as tf
 import numpy as np
 import math
@@ -7,7 +8,6 @@ import os
 import time
 from random import randint
 from config import Config
-#from dataset import minibatches
 
 def GetHumanReadable(size,precision=2):
     suffixes=['B','KB','MB','GB','TB']
@@ -156,7 +156,6 @@ class Model():
 
         self.embed_snt_src = self.sembedding(self.out_src, self.last_src, self.config.net_snt, self.len_src)
 
-
     def add_encoder_tgt(self):
         B = tf.shape(self.input_tgt)[0] #batch size
         S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
@@ -175,12 +174,6 @@ class Model():
                 self.out_tgt, self.last_tgt = self.gru(self.out_tgt, layer, i, self.len_tgt)
 
         self.embed_snt_tgt = self.sembedding(self.out_tgt, self.last_tgt, self.config.net_snt, self.len_tgt)
-
-#        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
-#        sys.stderr.write("Total Enc parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
-#        for var in tf.trainable_variables(): 
-#            pars = var.get_shape().num_elements()
-#            sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
 
     def add_decoder(self):
         B = tf.shape(self.input_tgt)[0] #batch size
@@ -202,15 +195,7 @@ class Model():
             self.out_logits = tf.layers.dense(self.out_tgt, self.config.vocab.length)
             self.out_pred = tf.argmax(self.out_logits, 2)
 
-        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
-        sys.stderr.write("Total Enc/Dec parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
-        for var in tf.trainable_variables(): 
-            pars = var.get_shape().num_elements()
-            sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
-
     def add_loss(self):
-        Vt = self.config.vocab.length #tgt vocab
-
         with tf.name_scope("loss"):
             xentropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(self.input_ref, depth=self.config.vocab.length, dtype=tf.float32), logits=self.out_logits) #[B, S]
             self.tmask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]            
@@ -244,6 +229,12 @@ class Model():
             self.add_decoder()
             self.add_loss()
             self.add_train()
+
+        pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
+        sys.stderr.write("Total Enc/Dec parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
+        for var in tf.trainable_variables(): 
+            pars = var.get_shape().num_elements()
+            sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
 
 
 ###################
