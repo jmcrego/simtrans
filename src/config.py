@@ -235,7 +235,6 @@ class Config():
             if self.tok is not None: 
                 with open(self.tok) as yamlfile: 
                     tok_opt = yaml.load(yamlfile)
-                    print(tok_opt)
                     ### replaces/creates vocab option in token
                     tok_opt["vocabulary"] = self.mdir + '/vocab'
                     ### if exists bpe_model_path option, copy model to mdir and replaces bpe_model_path in token
@@ -244,7 +243,7 @@ class Config():
                         ### replace token file with new bpe_model_path 
                         tok_opt['bpe_model_path'] = self.mdir + '/bpe'
                         with open(self.mdir + '/token', 'w') as outfile: 
-                            yaml.dump(tok_opt, outfile)
+                            yaml.dump(tok_opt, outfile, default_flow_style=True)
                     else: 
                         ### copy token file
                         copyfile(self.tok, self.mdir + "/token")
