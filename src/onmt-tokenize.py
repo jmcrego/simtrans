@@ -39,8 +39,9 @@ usage = """usage: {}
    -vocabulary FILE : vocabulary file
    -h               : this message
 
--yaml file is not used if json file is passed
--json/yaml options override command-line options
++ yaml file is not used if json file is passed
++ json/yaml options override command-line options
++ See https://github.com/OpenNMT/Tokenizer/blob/master/bindings/python/README.md for the list of available options used with for pyonmttok.
 """.format(sys.argv.pop(0))
 
 while len(sys.argv):
