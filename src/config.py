@@ -28,18 +28,18 @@ class Config():
 *  -tgt_val_lid      FILE : lid of tgt validation files (comma-separated)
 
    -voc              FILE : src/tgt vocab (needed to initialize learning)
-   -tok              FILE : src/tgt (yaml) onmt tokenization options
+   -tok              FILE : src/tgt onmt tokenization options (yaml)
 
    Network topology:
-   -net_wrd        STRING : word src/tgt embeddings size Ex: 256-0.3 (embedding_size-dropout)
+   -net_wrd        STRING : word src/tgt embeddings size Ex: 256-0.3 (embeddingSize-dropout)
    -net_enc        STRING : encoder layers (comma-separated list) Ex: c-512-3-0.3,b-512-0.3,b-512-0.3
                             Each layer follows the next formats:
-                                -Convolutional (c-fiters-kernel_size-dropout)
-                                -Bi-LSTM       (b-hidden_size-dropout) 
+                                -Convolutional (c-fiters-kernelSize-dropout)
+                                -Bi-LSTM       (b-hiddenSize-dropout) 
                                 -LSTM
                                 -GRU
    -net_snt        STRING : src sentence embedding: last, mean, max
-   -net_dec        STRING : decoder layers (comma-separated list) Ex: l-2048-0.2 (type-embedding_size-dropout)
+   -net_dec        STRING : decoder layers (comma-separated list) Ex: l-2048-0.2 (type-embeddingSize-dropout)
    -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop
    -net_lid        STRING : list of LID tags (comma-separated list) Ex: English,French,German
 
@@ -84,7 +84,6 @@ class Config():
         self.tok = None
         #will be created
         self.vocab = None #vocabulary
-#        self.embed = None #embedding
         self.token = None #onmt tokenizer
         #network
         self.net_wrd = None
@@ -111,6 +110,8 @@ class Config():
         self.show_emb = False
         self.show_snt = False
         self.show_idx = False
+
+        self.is_inference = False
 
         self.parse(sys.argv)
         tf.set_random_seed(self.seed)
@@ -198,6 +199,9 @@ class Config():
         argv = self.read_topology()
         self.parse(argv)
         self.read_vocab_token()
+        self.max_seq_size = 0
+        self.max_sents = 0
+        self.is_inference = True
         return  
 
     def learn(self):
@@ -244,7 +248,7 @@ class Config():
                         tok_opt['bpe_model_path'] = self.mdir + '/bpe'
                         with open(self.mdir + '/token', 'w') as outfile: 
                             yaml.dump(tok_opt, outfile, default_flow_style=True)
-                    else: 
+                    else:
                         ### copy token file
                         copyfile(self.tok, self.mdir + "/token")
                     print(tok_opt)
