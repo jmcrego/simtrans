@@ -232,7 +232,7 @@ class Config():
             #copy vocabularies
             copyfile(self.voc, self.mdir + "/vocab")
             #copy tokenizers if exist
-            if self.tok: 
+            if self.tok is not None: 
                 with open(self.tok) as jsonfile: 
                     tok_opt = json.load(jsonfile)
                     print(tok_opt)
