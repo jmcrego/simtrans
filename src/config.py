@@ -235,6 +235,7 @@ class Config():
             if self.tok: 
                 with open(self.mdir + '/token') as jsonfile: 
                     tok_opt = json.load(jsonfile)
+                    print(tok_opt)
                     ### replaces/creates vocab option in token
                     tok_opt["vocabulary"] = self.mdir + '/vocab'
                     ### if exists bpe_model_path option, copy model to mdir and replaces bpe_model_path in token
@@ -246,6 +247,7 @@ class Config():
                     else: 
                         ### copy token file
                         copyfile(self.tok, self.mdir + "/token")
+                    print(tok_opt)
             #read vocab and token
             self.read_vocab_token()
             #write topology file
