@@ -28,7 +28,7 @@ class Config():
 *  -tgt_val_lid      FILE : lid of tgt validation files (comma-separated)
 
    -voc              FILE : src/tgt vocab (needed to initialize learning)
-   -tok              FILE : src/tgt json onmt tokenization options 
+   -tok              FILE : src/tgt (json) onmt tokenization options
 
    Network topology:
    -net_wrd        STRING : word src/tgt embeddings size Ex: 256-0.3 (embedding_size-dropout)
@@ -179,7 +179,6 @@ class Config():
             self.tok = self.mdir + '/token'
             with open(self.mdir + '/token') as jsonfile: 
                 tok_opt = json.load(jsonfile)
-                tok_opt["vocabulary"] = self.mdir + '/vocab'
                 self.token = build_tokenizer(tok_opt)
                 print('built tokenizer')
 
@@ -233,7 +232,20 @@ class Config():
             #copy vocabularies
             copyfile(self.voc, self.mdir + "/vocab")
             #copy tokenizers if exist
-            if self.tok: copyfile(self.tok, self.mdir + "/token")
+            if self.tok: 
+                with open(self.mdir + '/token') as jsonfile: 
+                    tok_opt = json.load(jsonfile)
+                    ### replaces/creates vocab option in token
+                    tok_opt["vocabulary"] = self.mdir + '/vocab'
+                    ### if exists bpe_model_path option, copy model to mdir and replaces bpe_model_path in token
+                    if 'bpe_model_path' in tok_opt:
+                        copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe")
+                        ### replace token file with new bpe_model_path 
+                        tok_opt['bpe_model_path'] = self.mdir + '/bpe'
+                        with open(self.mdir + 'token', 'w') as outfile: json.dump(tok_opt, outfile)
+                    else: 
+                        ### copy token file
+                        copyfile(self.tok, self.mdir + "/token")
             #read vocab and token
             self.read_vocab_token()
             #write topology file
