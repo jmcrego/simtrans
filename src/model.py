@@ -47,6 +47,8 @@ class Model():
         cfg = layer.split('-')
         E = int(cfg[0])
         K = 1.0 - float(cfg[1])
+        if self.config.is_inference: K = 1.0
+
         with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
             self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
@@ -57,6 +59,7 @@ class Model():
         cfg = layer.split('-')
         hunits = int(cfg[1])
         K = 1.0 - float(cfg[2])
+        if self.config.is_inference: K = 1.0
 
         with tf.variable_scope("blstm_{}".format(i), reuse=tf.AUTO_REUSE):
             cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
@@ -72,6 +75,7 @@ class Model():
         cfg = layer.split('-')
         hunits = int(cfg[1])
         K = 1.0 - float(cfg[2])
+        if self.config.is_inference: K = 1.0
 
         initial_state = None
         if origin is not None:
@@ -92,6 +96,8 @@ class Model():
         filters = int(cfg[1])
         kernel_size = int(cfg[2])
         K = 1.0 - float(cfg[3])
+        if self.config.is_inference: K = 1.0
+
         with tf.variable_scope("conv_{}".format(i), reuse=tf.AUTO_REUSE):
             output = tf.layers.conv1d(inputs=input, filters=filters, kernel_size=kernel_size, padding="same", activation=tf.nn.relu)
             output = tf.nn.dropout(output, keep_prob=K)
