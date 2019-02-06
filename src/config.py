@@ -233,7 +233,7 @@ class Config():
             copyfile(self.voc, self.mdir + "/vocab")
             #copy tokenizers if exist
             if self.tok: 
-                with open(self.mdir + '/token') as jsonfile: 
+                with open(self.tok) as jsonfile: 
                     tok_opt = json.load(jsonfile)
                     print(tok_opt)
                     ### replaces/creates vocab option in token
@@ -243,7 +243,8 @@ class Config():
                         copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe")
                         ### replace token file with new bpe_model_path 
                         tok_opt['bpe_model_path'] = self.mdir + '/bpe'
-                        with open(self.mdir + 'token', 'w') as outfile: json.dump(tok_opt, outfile)
+                        with open(self.mdir + 'token', 'w') as outfile: 
+                            json.dump(tok_opt, outfile)
                     else: 
                         ### copy token file
                         copyfile(self.tok, self.mdir + "/token")
