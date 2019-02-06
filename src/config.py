@@ -235,6 +235,7 @@ class Config():
             if self.tok is not None: 
                 with open(self.tok) as jsonfile: 
                     tok_opt = json.load(jsonfile)
+                    sys.exit()
                     print(tok_opt)
                     ### replaces/creates vocab option in token
                     tok_opt["vocabulary"] = self.mdir + '/vocab'
