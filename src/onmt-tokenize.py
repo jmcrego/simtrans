@@ -26,18 +26,21 @@ def build_tokenizer(args):
     return pyonmttok.Tokenizer(mode, **local_args)
     
 
+fyaml = None
 fjson = None
-case = False
 tokopts = {'mode': 'aggressive', 'vocabulary': ''}
 usage = """usage: {}
-   -json       FILE : json file containing tokenization options (mode, vocabulary, ...)
-   -yaml       FILE : yaml file containing tokenization options (mode, vocabulary, ...)
+   -json       FILE : json file containing tokenization options (mode, vocabulary, bpe_model_path, joiner_annotate, case_feature, ...)
+   -yaml       FILE : yaml file containing tokenization options (mode, vocabulary, bpe_model_path, joiner_annotate, case_feature, ...)
    -mode       MODE : tokenization mode: aggressive, conservative [aggressive]
-   -bpe        FILE : bpe codes to apply bpe subtokenization (use -bpe_model_path)
+   -bpe        FILE : bpe codes to apply subtokenization (use -bpe_model_path)
    -joiner          : use joiner annotate (use -joiner_annotate))
    -lc              : lowercase all data (use -case_feature)
    -vocabulary FILE : vocabulary file
    -h               : this message
+
+-yaml file is not used if json file is passed
+-json/yaml options override command-line options
 """.format(sys.argv.pop(0))
 
 while len(sys.argv):
