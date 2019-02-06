@@ -41,7 +41,7 @@ usage = """usage: {}
 
 + yaml file is not used if json file is passed
 + json/yaml options override command-line options
-+ See https://github.com/OpenNMT/Tokenizer/blob/master/bindings/python/README.md for the list of available options used with for pyonmttok.
++ See https://github.com/OpenNMT/Tokenizer/blob/master/bindings/python/README.md for the list of available options of pyonmttok.
 """.format(sys.argv.pop(0))
 
 while len(sys.argv):
