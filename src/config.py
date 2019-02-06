@@ -243,7 +243,7 @@ class Config():
                         copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe")
                         ### replace token file with new bpe_model_path 
                         tok_opt['bpe_model_path'] = self.mdir + '/bpe'
-                        with open(self.mdir + 'token', 'w') as outfile: 
+                        with open(self.mdir + '/token', 'w') as outfile: 
                             json.dump(tok_opt, outfile)
                     else: 
                         ### copy token file
