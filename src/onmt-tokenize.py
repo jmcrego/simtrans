@@ -65,8 +65,6 @@ elif fyaml is not None: ### read tokenizer options from yaml file
     with open(fyaml) as yamlfile:
         tokopts = yaml.load(yamlfile)
 
-sys.stderr.write("tokenizer args = {}\n".format(tokopts))
-
 t = build_tokenizer(tokopts)
 for line in sys.stdin:
     line, _ = t.tokenize(str(line.strip('\n')))
