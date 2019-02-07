@@ -181,7 +181,6 @@ class Config():
             with open(self.mdir + '/token') as yamlfile: 
                 tok_opt = yaml.load(yamlfile)
                 self.token = build_tokenizer(tok_opt)
-                print('built tokenizer')
 
     def inference(self):
         if not self.epoch:
