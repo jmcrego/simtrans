@@ -409,7 +409,7 @@ class Model():
 
         if self.config.mdir: ### initialize for training or restore previous
             if not os.path.exists(self.config.mdir + '/checkpoint'): 
-                sys.stderr.write("Initializing model\n")
+                sys.stderr.write("Initializing model variables\n")
                 self.sess.run(tf.global_variables_initializer())
             else:
                 sys.stderr.write("Restoring previous model: {}\n".format(self.config.mdir))
@@ -433,13 +433,13 @@ class Model():
         sys.stderr.write("Ss={}\n".format(len(src_batch[0])))
         sys.stderr.write("St={}\n".format(len(tgt_batch[0])))
         sys.stderr.write("V={}\n".format(self.config.vocab.length))
-        print("src[0]\t{}".format(" ".join(str(e) for e in raw_src_batch[0])))
-        print("isrc[0]"," ".join([str(e) for e in src_batch[0]]))
-        print("len_src[0]",str(len_src_batch[0]))
-        print("tgt[0]\t{}".format(" ".join(str(e) for e in raw_tgt_batch[0])))
-        print("itgt[0]"," ".join([str(e) for e in tgt_batch[0]]))
-        print("iref[0]"," ".join([str(e) for e in ref_batch[0]]))
-        print("len_tgt[0]",str(len_tgt_batch[0]))
+        sys.stderr.write("src[0]\t{}\n".format(" ".join(str(e) for e in raw_src_batch[0])))
+        sys.stderr.write("isrc[0]\t{}\n".format(" ".join([str(e) for e in src_batch[0]])))
+        sys.stderr.write("len_src[0]\t{}\n".format(str(len_src_batch[0])))
+        sys.stderr.write("tgt[0]\t{}\n".format(" ".join(str(e) for e in raw_tgt_batch[0])))
+        sys.stderr.write("itgt[0]\t{}\n".format(" ".join([str(e) for e in tgt_batch[0]])))
+        sys.stderr.write("iref[0]\t{}\n".format(" ".join([str(e) for e in ref_batch[0]])))
+        sys.stderr.write("len_tgt[0]\t{}\n".format(str(len_tgt_batch[0])))
         embed_src, out_src, last_src, embed_snt_src, embed_tgt, embed_snt_src_plus_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.last_src, self.embed_snt_src, self.embed_tgt, self.embed_snt_src_plus_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
         sys.stderr.write("Encoder\n")
         sys.stderr.write("shape of embed_src = {} [B,Ss,Es]\n".format(np.array(embed_src).shape))
