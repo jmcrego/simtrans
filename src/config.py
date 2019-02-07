@@ -251,7 +251,6 @@ class Config():
                     else:
                         ### copy token file
                         copyfile(self.tok, self.mdir + "/token")
-                    print(tok_opt)
             #read vocab and token
             self.read_vocab_token()
             #write topology file
