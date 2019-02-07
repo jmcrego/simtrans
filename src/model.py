@@ -453,8 +453,6 @@ class Model():
         sys.stderr.write("shape of out_logits = {} [B,St,V]\n".format(np.array(out_logits).shape))
         sys.stderr.write("shape of out_pred = {} [B,St]\n".format(np.array(out_pred).shape))
 
-        #sys.exit()
-
     def debug2(self, fd, src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch):
         sys.stderr.write("src_batch {}\n".format(src_batch))
         sys.stderr.write("len_src_batch {}\n".format(len_src_batch))
