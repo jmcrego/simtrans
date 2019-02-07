@@ -20,6 +20,7 @@ class Dataset():
     def __init__(self, fSRC, fTGT, LID, config):
         self.vocab = config.vocab
         self.max_sents = config.max_sents
+        self.max_seq_size = config.max_seq_size
         self.data = []
         self.data_batch = []
         self.maxtoksperline = 512
@@ -82,7 +83,7 @@ class Dataset():
                     src = sline.split(' ')
 
                 ### truncate if too long even for inference
-                if len(src)>self.maxtoksperline: 
+                if self.max_seq_size==0 and len(src)>self.maxtoksperline: 
                     sys.stderr.write('warning: src sentence sized of {} tokens truncated to {}\n'.format(len(src),self.maxtoksperline))
                     src = src[0:self.maxtoksperline]
 
@@ -100,7 +101,7 @@ class Dataset():
                         tgt = tline.split(' ')
 
                     ### truncate if too long even for inference
-                    if len(tgt)>self.maxtoksperline: 
+                    if self.max_seq_size==0 and len(tgt)>self.maxtoksperline: 
                         sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to {}\n'.format(len(tgt),self.maxtoksperline))
                         tgt = tgt[0:self.maxtoksperline]
 
