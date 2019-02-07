@@ -450,7 +450,7 @@ class Model():
         print("iref[0]"," ".join([str(e) for e in ref_batch[0]]))
         print("len_tgt[0]",str(len_tgt_batch[0]))
 
-        sys.exit()
+        #sys.exit()
 
     def debug2(self, fd, src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_batch):
         sys.stderr.write("src_batch {}\n".format(src_batch))
