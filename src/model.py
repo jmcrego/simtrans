@@ -148,15 +148,19 @@ class Model():
         self.embed_src = self.wembedding(self.input_src, self.config.vocab.length, self.config.net_wrd) #[B,S,E]
         self.out_src = self.embed_src
         self.last_src = []
-        for i,layer in enumerate(self.config.net_enc.split(',')):
-            if layer.startswith('b'): 
-                self.out_src, self.last_src = self.blstm(self.out_src, layer, i, self.len_src)
-            elif layer.startswith('c'):
-                self.out_src = self.conv(self.out_src, layer, i)
-            elif layer.startswith('l'):
-                self.out_src, self.last_src = self.lstm(self.out_src, layer, i, self.len_src)
-            elif layer.startswith('g'):
-                self.out_src, self.last_src = self.gru(self.out_src, layer, i, self.len_src)
+        if self.config.net_enc is not None:
+            for i,layer in enumerate(self.config.net_enc.split(',')):
+                if layer.startswith('b'): 
+                    self.out_src, self.last_src = self.blstm(self.out_src, layer, i, self.len_src)
+                elif layer.startswith('c'):
+                    self.out_src = self.conv(self.out_src, layer, i)
+                elif layer.startswith('l'):
+                    self.out_src, self.last_src = self.lstm(self.out_src, layer, i, self.len_src)
+                elif layer.startswith('g'):
+                    self.out_src, self.last_src = self.gru(self.out_src, layer, i, self.len_src)
+                else:
+                    sys.stderr.write("error: bad -net_enc {}-th layer type '{}'\n".format(i,layer))
+                    sys.exit()
 
         self.embed_snt_src = self.sembedding(self.out_src, self.last_src, self.config.net_snt, self.len_src)
 
@@ -167,15 +171,19 @@ class Model():
         self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.wrd) #[B,S,E]
         self.out_tgt = self.embed_tgt
         self.last_tgt = []
-        for i,layer in enumerate(self.config.net_enc.split(',')):
-            if layer.startswith('b'): 
-                self.out_tgt, self.last_tgt = self.blstm(self.out_tgt, layer, i, self.len_tgt)
-            elif layer.startswith('c'):
-                self.out_tgt = self.conv(self.out_tgt, layer, i)
-            elif layer.startswith('l'):
-                self.out_tgt, self.last_tgt = self.lstm(self.out_tgt, layer, i, self.len_tgt)
-            elif layer.startswith('g'):
-                self.out_tgt, self.last_tgt = self.gru(self.out_tgt, layer, i, self.len_tgt)
+        if self.config.net_enc is not None:
+            for i,layer in enumerate(self.config.net_enc.split(',')):
+                if layer.startswith('b'): 
+                    self.out_tgt, self.last_tgt = self.blstm(self.out_tgt, layer, i, self.len_tgt)
+                elif layer.startswith('c'):
+                    self.out_tgt = self.conv(self.out_tgt, layer, i)
+                elif layer.startswith('l'):
+                    self.out_tgt, self.last_tgt = self.lstm(self.out_tgt, layer, i, self.len_tgt)
+                elif layer.startswith('g'):
+                    self.out_tgt, self.last_tgt = self.gru(self.out_tgt, layer, i, self.len_tgt)
+                else:
+                    sys.stderr.write("error: bad -net_enc {}-th layer type '{}'\n".format(i,layer))
+                    sys.exit()
 
         self.embed_snt_tgt = self.sembedding(self.out_tgt, self.last_tgt, self.config.net_snt, self.len_tgt)
 
