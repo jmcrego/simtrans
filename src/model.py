@@ -60,7 +60,7 @@ class Model():
         hunits = int(cfg[1])
         K = 1.0 - float(cfg[2])
         if self.config.is_inference: K = 1.0
-        sys.stderr.write("building blsmt i={} hunits={} seqlength={}\n".format(i,hunits,l))
+        sys.stderr.write("Creating blsmt i={} hunits={} seqlength={}\n".format(i,hunits,l))
 
         with tf.variable_scope("blstm_{}".format(i), reuse=tf.AUTO_REUSE):
             cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
