@@ -48,7 +48,7 @@ class Model():
         E = int(cfg[0])
         K = 1.0 - float(cfg[1])
         if self.config.is_inference: K = 1.0
-        sys.stderr.write("wembedding V={} E={}\n".format(V,E))
+        sys.stderr.write("wembedding V={} E={} K={:.3f}\n".format(V,E,K))
 
         with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
             self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
@@ -61,7 +61,7 @@ class Model():
         hunits = int(cfg[1])
         K = 1.0 - float(cfg[2])
         if self.config.is_inference: K = 1.0
-        sys.stderr.write("blsmt i={} hunits={}\n".format(i,hunits))
+        sys.stderr.write("blsmt i={} hunits={} K={:.3f}\n".format(i,hunits,K))
 
         with tf.variable_scope("blstm_{}".format(i), reuse=tf.AUTO_REUSE):
             cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
@@ -78,7 +78,7 @@ class Model():
         hunits = int(cfg[1])
         K = 1.0 - float(cfg[2])
         if self.config.is_inference: K = 1.0
-        sys.stderr.write("lsmt i={} hunits={}\n".format(i,hunits))
+        sys.stderr.write("lsmt i={} hunits={} K={:.3f} bridge={}\n".format(i,hunits,K,origin==None))
 
         initial_state = None
         if origin is not None:
@@ -100,7 +100,7 @@ class Model():
         kernel_size = int(cfg[2])
         K = 1.0 - float(cfg[3])
         if self.config.is_inference: K = 1.0
-        sys.stderr.write("conv i={} filters={} kernel_size={}\n".format(i,filters,kernel_size))
+        sys.stderr.write("conv i={} filters={} kernel_size={} K={:.3f}\n".format(i,filters,kernel_size,K))
 
         with tf.variable_scope("conv_{}".format(i), reuse=tf.AUTO_REUSE):
             output = tf.layers.conv1d(inputs=input, filters=filters, kernel_size=kernel_size, padding="same", activation=tf.nn.relu)
