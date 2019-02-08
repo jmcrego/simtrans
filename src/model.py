@@ -168,7 +168,7 @@ class Model():
         B = tf.shape(self.input_tgt)[0] #batch size
         S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
 
-        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.wrd) #[B,S,E]
+        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.net_wrd) #[B,S,E]
         self.out_tgt = self.embed_tgt
         self.last_tgt = []
         if self.config.net_enc is not None:
