@@ -25,6 +25,8 @@ class nearest:
         nok = 0 ### used if -parallel
         iquery = 0
         acc = 0.0
+        if nbests:
+            sys.stderr.write("sim\tquery:{}\tdb\n".format(fquery))
         with open(fquery) as f:
             for line in f:
                 vec = line.rstrip('\n').split(' ')
