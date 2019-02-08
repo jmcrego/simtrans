@@ -48,7 +48,7 @@ class nearest:
                     if parallel and iquery==idb: 
                         nok += 1
                     if nbests:
-                        print("{:.5f}\t{}\t{}\t{}".format(sim,k+1,iquery,idb))
+                        print("{:.5f}\t{}\t{}".format(sim,iquery,idb))
                     k += 1
                     if k == K: 
                         break
