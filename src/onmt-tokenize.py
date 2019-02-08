@@ -8,22 +8,18 @@ import six
 from tokenizer import build_tokenizer
 
 
-fyaml = None
 fjson = None
+case = False
 tokopts = {'mode': 'aggressive', 'vocabulary': ''}
 usage = """usage: {}
-   -json       FILE : json file containing tokenization options (mode, vocabulary, bpe_model_path, joiner_annotate, case_feature, ...)
-   -yaml       FILE : yaml file containing tokenization options (mode, vocabulary, bpe_model_path, joiner_annotate, case_feature, ...)
+   -json       FILE : json file containing tokenization options (mode, vocabulary, ...)
+   -yaml       FILE : yaml file containing tokenization options (mode, vocabulary, ...)
    -mode       MODE : tokenization mode: aggressive, conservative [aggressive]
-   -bpe        FILE : bpe codes to apply subtokenization (use -bpe_model_path)
+   -bpe        FILE : bpe codes to apply bpe subtokenization (use -bpe_model_path)
    -joiner          : use joiner annotate (use -joiner_annotate))
    -lc              : lowercase all data (use -case_feature)
    -vocabulary FILE : vocabulary file
    -h               : this message
-
-+ yaml file is not used if json file is passed
-+ json/yaml options override command-line options
-+ See https://github.com/OpenNMT/Tokenizer/blob/master/bindings/python/README.md for the list of available options of pyonmttok.
 """.format(sys.argv.pop(0))
 
 while len(sys.argv):
@@ -64,6 +60,7 @@ if fjson is not None: ### read tokenizer options from json file
 elif fyaml is not None: ### read tokenizer options from yaml file
     with open(fyaml) as yamlfile:
         tokopts = yaml.load(yamlfile)
+
 
 t = build_tokenizer(tokopts)
 for line in sys.stdin:
