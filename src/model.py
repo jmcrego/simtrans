@@ -325,7 +325,7 @@ class Model():
         tpre = time.time()
         for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch, lr)
-#            if iter==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
+            if iter==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
 #            _, embed_snt_src, embed_snt_tgt, align, aggregation_src, aggregation_tgt, output_src, output_tgt, loss_src, loss_tgt, loss = self.sess.run([self.train_op, self.embed_snt_src, self.embed_snt_tgt, self.align, self.aggregation_src, self.aggregation_tgt, self.output_src, self.output_tgt, self.loss_src, self.loss_tgt, self.loss], feed_dict=fd)
 #            sys.stderr.write("len_src = {}\n".format(len_src_batch))
