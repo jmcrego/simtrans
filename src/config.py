@@ -40,6 +40,7 @@ class Config():
                                 -GRU
    -net_snt        STRING : src sentence embedding: last, mean, max
    -net_dec        STRING : decoder layers (comma-separated list) Ex: l-2048-0.2 (type-embeddingSize-dropout)
+                            use -net_dec align for alignment optimization
    -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop
    -net_lid        STRING : list of LID tags (comma-separated list) Ex: English,French,German
 
