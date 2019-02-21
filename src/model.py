@@ -184,7 +184,7 @@ class Model():
         B = tf.shape(self.input_tgt)[0] #batch size
         S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
 
-        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.net_wrd, 'src') #[B,S,E]
+        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.net_wrd) #[B,S,E]
         self.out_tgt = self.embed_tgt
         self.last_tgt = []
         if self.config.net_enc is not None and self.config.net_enc != 'None':
@@ -208,7 +208,7 @@ class Model():
         B = tf.shape(self.input_tgt)[0] #batch size
         S = tf.shape(self.input_tgt)[1] #seq_length
 
-        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.net_wrd, 'src')
+        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.net_wrd)
 
         #self.embed_snt_src is either [B,H] or [B,E] if only embedding is used
         self.embed_snt_src_extend = tf.expand_dims(self.embed_snt_src, 1) #[B,H] or [B,E] => [B,1,H] or [B,1,E]
