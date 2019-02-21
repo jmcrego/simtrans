@@ -160,7 +160,7 @@ class Model():
         B = tf.shape(self.input_src)[0] #batch size
         S = tf.shape(self.input_src)[1] #seq_length (including <pad> tokens)
 
-        self.embed_src = self.wembedding(self.input_src, self.config.vocab.length, self.config.net_wrd, 'src') #[B,S,E]
+        self.embed_src = self.wembedding(self.input_src, self.config.vocab.length, self.config.net_wrd) #[B,S,E]
         self.out_src = self.embed_src
         self.last_src = []
         if self.config.net_enc is not None and self.config.net_enc != 'None':
