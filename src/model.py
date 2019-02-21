@@ -44,14 +44,14 @@ class Model():
         self.config = config
         self.sess = None
 
-    def wembedding(self, input, V, layer, name):
+    def wembedding(self, input, V, layer):
         cfg = layer.split('-')
         E = int(cfg[0])
         K = 1.0 - float(cfg[1])
         if self.config.is_inference: K = 1.0
-        sys.stderr.write("wembedding V={} E={} K={:.3f} name={}\n".format(V,E,K,name))
+        sys.stderr.write("wembedding V={} E={} K={:.3f}\n".format(V,E,K))
 
-        with tf.device('/cpu:0'), tf.variable_scope("embedding_{}".format(name), reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
+        with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
             self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
@@ -239,11 +239,8 @@ class Model():
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
-#            self.aggregation_src = tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l, :], 0), (tf.exp(tf.transpose(self.align, [0, 2, 1])), self.len_tgt), dtype=tf.float32), name="aggregation_src") #[B,Ss]
-#            self.aggregation_tgt = tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l, :], 0), (tf.exp(self.align),                          self.len_src), dtype=tf.float32), name="aggregation_tgt") #[B,St]
             self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l, :], 0), (tf.exp(tf.transpose(self.align, [0, 2, 1]) * R), self.len_tgt), dtype=tf.float32)), R, name="aggregation_src") #[B,Ss]
             self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l, :], 0), (tf.exp(self.align * R), self.len_src),                          dtype=tf.float32)), R, name="aggregation_tgt") #[B,St]
-
             self.output_src = tf.log(1 + tf.exp(self.aggregation_src * self.ref_src)) ### low error if aggregation_src * ref_src is negative (different sign)
             self.output_tgt = tf.log(1 + tf.exp(self.aggregation_tgt * self.ref_tgt))
 

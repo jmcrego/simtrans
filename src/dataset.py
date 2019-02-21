@@ -259,8 +259,12 @@ class Dataset():
         for i in range(len(SRC)):
             while len(SRC[i]) < max_src: SRC[i].append(self.vocab.idx_pad) #<pad>
             while len(TGT[i]) < max_tgt: TGT[i].append(self.vocab.idx_pad) #<pad>
-            while len(REF_SRC[i]) < max_src: REF_SRC[i].append(self.vocab.idx_pad) #<pad>
-            while len(REF_TGT[i]) < max_tgt: REF_TGT[i].append(self.vocab.idx_pad) #<pad>
+            if self.is_inference:
+                while len(REF_SRC[i]) < max_src: REF_SRC[i].append(-1.0) #not divergent
+                while len(REF_TGT[i]) < max_tgt: REF_TGT[i].append(-1.0)
+            else:
+                while len(REF_SRC[i]) < max_src: REF_SRC[i].append(self.vocab.idx_pad)
+                while len(REF_TGT[i]) < max_tgt: REF_TGT[i].append(self.vocab.idx_pad)
 #            print("TGT",TGT[i])
 #            print("REF",REF[i])        
         #print("BATCH max_src={} max_tgt={}".format(max_src,max_tgt))
