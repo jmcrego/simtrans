@@ -26,7 +26,7 @@ class Dataset():
         self.maxtoksperline = 512
         self.is_inference = False
         self.is_bitext = False
-        self.is_align = config.net_dec == 'align'
+        self.is_align = config.net_dec=='align'
 
         ### check number of fSRC/fTGT/LID parameters are correct
         if len(fSRC) and len(fSRC)==len(fTGT) and len(fSRC)==len(LID): 
@@ -142,7 +142,8 @@ class Dataset():
                     isrc, iref_src, nunk_src = self.wrd2iwrd_ref(src, False)
                     itgt, iref_tgt, nunk_tgt = self.wrd2iwrd_ref(tgt, False) 
                 else: #### divergent example 
-                    tgt = prev_tgt
+                    if not self.is_inference:
+                        tgt = prev_tgt
                     isrc, iref_src, nunk_src = self.wrd2iwrd_ref(src, True)
                     itgt, iref_tgt, nunk_tgt = self.wrd2iwrd_ref(tgt, True) 
                     n_divergent += 1

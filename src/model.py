@@ -190,13 +190,13 @@ class Model():
         if self.config.net_enc is not None and self.config.net_enc != 'None':
             for i,layer in enumerate(self.config.net_enc.split(',')):
                 if layer.startswith('b'): 
-                    self.out_tgt, self.last_tgt = self.blstm(self.out_tgt, layer, i, 'src', self.len_tgt)
+                    self.out_tgt, self.last_tgt = self.blstm(self.out_tgt, layer, i, 'tgt', self.len_tgt)
                 elif layer.startswith('c'):
-                    self.out_tgt = self.conv(self.out_tgt, layer, i, 'src')
+                    self.out_tgt = self.conv(self.out_tgt, layer, i, 'tgt')
                 elif layer.startswith('l'):
-                    self.out_tgt, self.last_tgt = self.lstm(self.out_tgt, layer, i, 'src', self.len_tgt)
+                    self.out_tgt, self.last_tgt = self.lstm(self.out_tgt, layer, i, 'tgt', self.len_tgt)
                 elif layer.startswith('g'):
-                    self.out_tgt, self.last_tgt = self.gru(self.out_tgt, layer, i, 'src', self.len_tgt)
+                    self.out_tgt, self.last_tgt = self.gru(self.out_tgt, layer, i, 'tgt', self.len_tgt)
                 else:
                     sys.stderr.write("error: bad -net_enc {}-th layer type '{}'\n".format(i,layer))
                     sys.exit()
