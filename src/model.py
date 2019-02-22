@@ -239,8 +239,8 @@ class Model():
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
-            self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l, :], 0), (tf.exp(tf.transpose(self.align, [0, 2, 1]) * R), self.len_tgt), dtype=tf.float32)), R, name="aggregation_src") #[B,Ss]
-            self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l, :], 0), (tf.exp(self.align * R), self.len_src),                          dtype=tf.float32)), R, name="aggregation_tgt") #[B,St]
+            self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (tf.exp(tf.transpose(self.align, [0, 2, 1]) * R), self.len_tgt), dtype=tf.float32)), R, name="aggregation_src") #[B,Ss]
+            self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (tf.exp(self.align * R), self.len_src),                          dtype=tf.float32)), R, name="aggregation_tgt") #[B,St]
             self.output_src = tf.log(1 + tf.exp(self.aggregation_src * self.ref_src)) ### low error if aggregation_src * ref_src is negative (different sign)
             self.output_tgt = tf.log(1 + tf.exp(self.aggregation_tgt * self.ref_tgt))
 

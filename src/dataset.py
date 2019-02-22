@@ -260,7 +260,7 @@ class Dataset():
         for i in range(len(SRC)):
             while len(SRC[i]) < max_src: SRC[i].append(self.vocab.idx_pad) #<pad>
             while len(TGT[i]) < max_tgt: TGT[i].append(self.vocab.idx_pad) #<pad>
-            if self.is_inference:
+            if self.is_align:
                 while len(REF_SRC[i]) < max_src: REF_SRC[i].append(-1.0) #not divergent
                 while len(REF_TGT[i]) < max_tgt: REF_TGT[i].append(-1.0)
             else:
