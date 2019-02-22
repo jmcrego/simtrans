@@ -44,14 +44,14 @@ class Model():
         self.config = config
         self.sess = None
 
-    def wembedding(self, input, V, layer):
+    def wembedding(self, input, V, layer, name):
         cfg = layer.split('-')
         E = int(cfg[0])
         K = 1.0 - float(cfg[1])
         if self.config.is_inference: K = 1.0
-        sys.stderr.write("wembedding V={} E={} K={:.3f}\n".format(V,E,K))
+        sys.stderr.write("wembedding V={} E={} K={:.3f} name={}\n".format(V,E,K,name))
 
-        with tf.device('/cpu:0'), tf.variable_scope("embedding", reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
+        with tf.device('/cpu:0'), tf.variable_scope("embedding_{}".format(name), reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
             self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
@@ -160,7 +160,7 @@ class Model():
         B = tf.shape(self.input_src)[0] #batch size
         S = tf.shape(self.input_src)[1] #seq_length (including <pad> tokens)
 
-        self.embed_src = self.wembedding(self.input_src, self.config.vocab.length, self.config.net_wrd) #[B,S,E]
+        self.embed_src = self.wembedding(self.input_src, self.config.vocab.length, self.config.net_wrd, 'src') #[B,S,E]
         self.out_src = self.embed_src
         self.last_src = []
         if self.config.net_enc is not None and self.config.net_enc != 'None':
@@ -184,7 +184,7 @@ class Model():
         B = tf.shape(self.input_tgt)[0] #batch size
         S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
 
-        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.net_wrd) #[B,S,E]
+        self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, self.config.net_wrd, 'tgt') #[B,S,E]
         self.out_tgt = self.embed_tgt
         self.last_tgt = []
         if self.config.net_enc is not None and self.config.net_enc != 'None':
