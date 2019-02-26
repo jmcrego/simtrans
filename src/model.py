@@ -234,21 +234,41 @@ class Model():
     def add_decoder_align(self):
         sys.stderr.write("decoder_align\n")
         B = tf.shape(self.input_tgt)[0] #batch size
-        S = tf.shape(self.input_tgt)[1] #seq_length
+        Ss = tf.shape(self.input_src)[1] #seq_length
+        St = tf.shape(self.input_tgt)[1] #seq_length
         R = 1.0
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
-            self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (tf.exp(tf.transpose(self.align, [0, 2, 1]) * R), self.len_tgt), dtype=tf.float32)), R, name="aggregation_src") #[B,Ss]
-            self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (tf.exp(self.align * R), self.len_src),                          dtype=tf.float32)), R, name="aggregation_tgt") #[B,St]
-            self.output_src = tf.log(1 + tf.exp(self.aggregation_src * self.ref_src)) ### low error if aggregation_src * ref_src is negative (different sign)
-            self.output_tgt = tf.log(1 + tf.exp(self.aggregation_tgt * self.ref_tgt))
+            align_trns = tf.transpose(self.align, [0, 2, 1]) #[B,St,Ss]
+
+            #equation (2)
+            exp_rs_src = tf.exp(R * align_trns) #[B,St,Ss]
+            sum_exp_rs_src = tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (exp_rs_src, self.len_tgt), dtype=tf.float32) #[B,Ss] (do not sum over <bos> and <eos> [1:l-1])
+            log_sum_exp_rs_src = tf.log(sum_exp_rs_src) #[B,Ss]
+            self.aggregation_src = tf.divide(log_sum_exp_rs_src, R, name="aggregation_src") #[B,Ss]
+
+            self.exp_rs_tgt = tf.exp(R * self.align) #[B,Ss,St]
+            self.sum_exp_rs_tgt = tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (self.exp_rs_tgt, self.len_src), dtype=tf.float32) #[B,St] (do not sum over <bos> and <eos>[1,l-1])
+            self.log_sum_exp_rs_tgt = tf.log(self.sum_exp_rs_tgt) #[B,St]
+            self.aggregation_tgt = tf.divide(self.log_sum_exp_rs_tgt, R, name="aggregation_tgt") #[B,St]
+
+            ### equation (3) error of each word
+            aggr_times_ref_src = self.aggregation_src * self.ref_src
+            self.error_src = tf.log(1 + tf.exp(aggr_times_ref_src)) ### low error if aggregation_src * ref_src is negative (different sign)
+
+            self.aggr_times_ref_tgt = self.aggregation_tgt * self.ref_tgt
+            self.error_tgt = tf.log(1 + tf.exp(self.aggr_times_ref_tgt))
 
     def add_loss_align(self):
 
         with tf.name_scope("loss_align"):
-            self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l]), (self.output_src, self.len_src), dtype=tf.float32))
-            self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x, l): tf.reduce_sum(x[:l]), (self.output_tgt, self.len_tgt), dtype=tf.float32))
+            sum_error_src = tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1]), (self.error_src, self.len_src), dtype=tf.float32)
+            self.loss_src = tf.reduce_mean(sum_error_src)
+
+            self.sum_error_tgt = tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1]), (self.error_tgt, self.len_tgt), dtype=tf.float32)
+            self.loss_tgt = tf.reduce_mean(self.sum_error_tgt)
+
             self.loss = self.loss_tgt + self.loss_src
 
     def add_train(self):
@@ -322,30 +342,8 @@ class Model():
         tpre = time.time()
         for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch, lr)
-            if iter==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
+            if iter%1000==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
-#            _, embed_snt_src, embed_snt_tgt, align, aggregation_src, aggregation_tgt, output_src, output_tgt, loss_src, loss_tgt, loss = self.sess.run([self.train_op, self.embed_snt_src, self.embed_snt_tgt, self.align, self.aggregation_src, self.aggregation_tgt, self.output_src, self.output_tgt, self.loss_src, self.loss_tgt, self.loss], feed_dict=fd)
-#            sys.stderr.write("len_src = {}\n".format(len_src_batch))
-#            sys.stderr.write("len_tgt = {}\n".format(len_tgt_batch))
-#            sys.stderr.write("shape of embed_snt_src = {}\n".format(np.array(embed_snt_src).shape))
-#            sys.stderr.write("embed_snt_src[0] = {}\n".format(" ".join(str(e) for e in embed_snt_src[0])))
-#            sys.stderr.write("shape of embed_snt_tgt = {}\n".format(np.array(embed_snt_tgt).shape))
-#            sys.stderr.write("embed_snt_tgt[0] = {}\n".format(" ".join(str(e) for e in embed_snt_tgt[0])))
-#            sys.stderr.write("shape of align = {}\n".format(np.array(align).shape))
-#            sys.stderr.write("align[0] = {}\n".format(" ".join(str(e) for e in align[0])))
-#            sys.stderr.write("shape of aggregation_src = {}\n".format(np.array(aggregation_src).shape))
-#            sys.stderr.write("shape of aggregation_tgt = {}\n".format(np.array(aggregation_tgt).shape))
-#            sys.stderr.write("aggregation_src[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in aggregation_src[0])))
-#            sys.stderr.write("aggregation_tgt[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in aggregation_tgt[0])))
-#            sys.stderr.write("shape of output_src = {}\n".format(np.array(output_src).shape))
-#            sys.stderr.write("shape of output_tgt = {}\n".format(np.array(output_tgt).shape))
-#            sys.stderr.write("output_src[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in output_src[0])))
-#            sys.stderr.write("output_tgt[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in output_tgt[0])))
-#            sys.stderr.write("loss_src = {:.6g}\n".format(loss_src))
-#            sys.stderr.write("loss_tgt = {:.6f}\n".format(loss_tgt))
-#            sys.stderr.write("loss = {:.6f}\n".format(loss))
-#            sys.exit()
-
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
             if (iter+1)%self.config.reports == 0:
@@ -517,7 +515,7 @@ class Model():
         sys.stderr.write("iref_tgt[0]\t{}\n".format(" ".join([str(e) for e in ref_tgt_batch[0]])))
         sys.stderr.write("len_tgt[0]\t{}\n".format(str(len_tgt_batch[0])))
         if self.config.net_dec == 'align':
-            embed_src, out_src, last_src, embed_snt_src, embed_tgt, out_tgt, last_tgt, embed_snt_tgt, align, aggregation_src, aggregation_tgt, output_src, output_tgt, loss_src, loss_tgt, loss = self.sess.run([self.embed_src, self.out_src, self.last_src, self.embed_snt_src, self.embed_tgt, self.out_tgt, self.last_tgt, self.embed_snt_tgt, self.align, self.aggregation_src, self.aggregation_tgt, self.output_src, self.output_tgt, self.loss_src, self.loss_tgt, self.loss], feed_dict=fd)
+            embed_src, out_src, last_src, embed_snt_src, embed_tgt, out_tgt, last_tgt, embed_snt_tgt, align, aggregation_src, aggregation_tgt, exp_rs_tgt, sum_exp_rs_tgt, log_sum_exp_rs_tgt, aggr_times_ref_tgt, error_src, error_tgt, sum_error_tgt, loss_src, loss_tgt, loss = self.sess.run([self.embed_src, self.out_src, self.last_src, self.embed_snt_src, self.embed_tgt, self.out_tgt, self.last_tgt, self.embed_snt_tgt, self.align, self.aggregation_src, self.aggregation_tgt, self.exp_rs_tgt, self.sum_exp_rs_tgt, self.log_sum_exp_rs_tgt, self.aggr_times_ref_tgt, self.error_src, self.error_tgt, self.sum_error_tgt, self.loss_src, self.loss_tgt, self.loss], feed_dict=fd)
             sys.stderr.write("Encoder src\n")
             sys.stderr.write("shape of embed_src = {} [B,Ss,Es]\n".format(np.array(embed_src).shape))
             sys.stderr.write("shape of out_src = {} [B,Ss,Hs] or [B,Ss,Es]\n".format(np.array(out_src).shape))
@@ -530,14 +528,25 @@ class Model():
             sys.stderr.write("shape of embed_snt_tgt = {}\n".format(np.array(embed_snt_tgt).shape))
             sys.stderr.write("Alignment\n")
             sys.stderr.write("shape of align = {}\n".format(np.array(align).shape))
+            sys.stderr.write("align[0] = \n{}\n".format(align[0]))
+            sys.stderr.write("shape of exp_rs_tgt = {}\n".format(np.array(exp_rs_tgt).shape))
+            sys.stderr.write("exp_rs_tgt[0] = \n{}\n".format(exp_rs_tgt[0]))
+            sys.stderr.write("shape of sum_exp_rs_tgt = {}\n".format(np.array(sum_exp_rs_tgt).shape))
+            sys.stderr.write("sum_exp_rs_tgt[0] = {}\n".format(sum_exp_rs_tgt[0]))
+            sys.stderr.write("shape of log_sum_exp_rs_tgt = {}\n".format(np.array(log_sum_exp_rs_tgt).shape))
+            sys.stderr.write("log_sum_exp_rs_tgt[0] = {}\n".format(log_sum_exp_rs_tgt[0]))
+            sys.stderr.write("shape of aggr_times_ref_tgt = {}\n".format(np.array(aggr_times_ref_tgt).shape))
+            sys.stderr.write("aggr_times_ref_tgt[0] = {}\n".format(aggr_times_ref_tgt[0]))
             sys.stderr.write("shape of aggregation_src = {}\n".format(np.array(aggregation_src).shape))
             sys.stderr.write("shape of aggregation_tgt = {}\n".format(np.array(aggregation_tgt).shape))
-            sys.stderr.write("shape of aggregation_src[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in aggregation_src[0])))
-            sys.stderr.write("shape of aggregation_tgt[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in aggregation_tgt[0])))
-            sys.stderr.write("shape of output_src = {}\n".format(np.array(output_src).shape))
-            sys.stderr.write("shape of output_tgt = {}\n".format(np.array(output_tgt).shape))
-            sys.stderr.write("shape of output_src[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in output_src[0])))
-            sys.stderr.write("shape of output_tgt[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in output_tgt[0])))
+            sys.stderr.write("aggregation_src[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in aggregation_src[0])))
+            sys.stderr.write("aggregation_tgt[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in aggregation_tgt[0])))
+            sys.stderr.write("shape of error_src = {}\n".format(np.array(error_src).shape))
+            sys.stderr.write("shape of error_tgt = {}\n".format(np.array(error_tgt).shape))
+            sys.stderr.write("error_src[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in error_src[0])))
+            sys.stderr.write("error_tgt[0] = {}\n".format(" ".join("{:.4f}".format(e) for e in error_tgt[0])))
+            sys.stderr.write("shape of sum_error_tgt = {}\n".format(np.array(sum_error_tgt).shape))
+            sys.stderr.write("sum_error_tgt = {}\n".format(sum_error_tgt))
             sys.stderr.write("loss_src = {:.6g}\n".format(loss_src))
             sys.stderr.write("loss_tgt = {:.6f}\n".format(loss_tgt))
             sys.stderr.write("loss = {:.6f}\n".format(loss))
