@@ -64,7 +64,7 @@ class Model():
         sys.stderr.write("\twembedding V={} E={} K={:.3f} name={}\n".format(V,E,K,namelayer))
 
         with tf.device('/cpu:0'), tf.variable_scope("embedding_{}".format(namelayer), reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
-            self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
+            self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.01, maxval=0.01), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
         return embedded
