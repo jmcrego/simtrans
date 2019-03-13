@@ -96,7 +96,7 @@ class Model():
         initial_state = None
         if origin is not None:
             with tf.variable_scope("bridge_{}".format(namelayer),reuse=tf.AUTO_REUSE):
-                initial_state_h = tf.layers.dense(origin, hunits, use_bias=False) # H*2 or E => H
+                initial_state_h = tf.layers.dense(origin, hunits, use_bias=False, kernel_initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed)) # H*2 or E => H
                 initial_state_c = tf.zeros(tf.shape(initial_state_h))
                 initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
 
