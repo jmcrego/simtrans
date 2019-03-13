@@ -11,17 +11,17 @@ from config import Config
 from idf import SentIdf
 
 def print2D(t,m):
-    print(t)
+    sys.stderr.write(t+"\n")
     for row in m:
-        print(" ".join(["{:10.3f}".format(e) for e in row]))
+        sys.stderr.write(" ".join(["{:10.3f}".format(e) for e in row])+"\n")
 
 def print1D(t,m):
-    print(t)
-    print(" ".join(["{:10.3f}".format(e) for e in m]))
+    sys.stderr.write(t+"\n")
+    sys.stderr.write(" ".join(["{:10.3f}".format(e) for e in m])+"\n")
 
 def print0D(t,m):
-    print(t)
-    print("{:10.3f}".format(m))
+    sys.stderr.write(t+"\n")
+    sys.stderr.write("{:10.3f}\n".format(m))
 
 def GetHumanReadable(size,precision=2):
     suffixes=['B','KB','MB','GB','TB']
