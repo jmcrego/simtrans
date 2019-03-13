@@ -562,7 +562,7 @@ class Model():
                 sys.stderr.write("itgt\t{}\n".format(" ".join([str(e) for e in tgt_batch[b]])))
                 sys.stderr.write("iref_tgt\t{}\n".format(" ".join([str(e) for e in ref_tgt_batch[b]])))
 
-                print2D("src out[{}]".format(b), out_src[b])
+                #print2D("src out[{}]".format(b), out_src[b])
                 print2D("src Align_t[{}]".format(b), align_t[b])
                 print2D("exp(A)[{}]".format(b), exp_rs_src[b])
                 print1D("sum_exp(A)[{}]".format(b), sum_exp_rs_src[b])
@@ -572,7 +572,7 @@ class Model():
                 print1D("error[{}]".format(b), error_src[b])
                 print0D("sum_error[{}]".format(b),sum_error_src[b])
     
-                print2D("tgt out[{}]".format(b), out_tgt[b])
+                #print2D("tgt out[{}]".format(b), out_tgt[b])
                 print2D("tgt Align[{}]".format(b), align[b])
                 print2D("exp(A)[{}]".format(b), exp_rs_tgt[b])
                 print1D("sum_exp(A)[{}]".format(b), sum_exp_rs_tgt[b])
