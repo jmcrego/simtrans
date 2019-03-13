@@ -78,9 +78,9 @@ class Model():
         sys.stderr.write("\tblsmt hunits={} K={:.3f} name={}\n".format(hunits,K,namelayer))
 
         with tf.variable_scope("blstm_{}".format(namelayer), reuse=tf.AUTO_REUSE):
-            cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+            cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed), state_is_tuple=True)
             cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=K)
-            cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+            cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed), state_is_tuple=True)
             cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=K)
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=seq_length, dtype=tf.float32)
             output = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
