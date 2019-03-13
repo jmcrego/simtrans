@@ -101,7 +101,7 @@ class Model():
                 initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
 
         with tf.variable_scope("lstm_{}".format(namelayer), reuse=tf.AUTO_REUSE):
-            cell = tf.contrib.rnn.LSTMCell(hunits)
+            cell = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed))
             cell = tf.contrib.rnn.DropoutWrapper(cell=cell, output_keep_prob=K)
             output, last = tf.nn.dynamic_rnn(cell, input, initial_state=initial_state, sequence_length=seq_length, dtype=tf.float32)
         return output, last
@@ -114,7 +114,7 @@ class Model():
         sys.stderr.write("\tconv filters={} kernel_size={} K={:.3f} name={}\n".format(filters,kernel_size,K,namelayer))
 
         with tf.variable_scope("conv_{}".format(namelayer), reuse=tf.AUTO_REUSE):
-            output = tf.layers.conv1d(inputs=input, filters=filters, kernel_size=kernel_size, padding="same", activation=tf.nn.relu)
+            output = tf.layers.conv1d(inputs=input, filters=filters, kernel_size=kernel_size, padding="same", activation=tf.nn.relu, kernel_initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed))
             output = tf.nn.dropout(output, keep_prob=K)
         return output
 
