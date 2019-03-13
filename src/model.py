@@ -552,7 +552,7 @@ class Model():
             sys.stderr.write("shape of embed_snt_tgt = {}\n".format(np.array(embed_snt_tgt).shape))
 
             for b in range(len(align)):
-                print("### {} #######################".format(b))
+                sys.stderr.write("### {} #######################\n".format(b))
                 sys.stderr.write("src\t{}\n".format(" ".join(str(e) for e in raw_src_batch[b])))
                 sys.stderr.write("isrc\t{}\n".format(" ".join([str(e) for e in src_batch[b]])))
                 sys.stderr.write("iref_src\t{}\n".format(" ".join([str(e) for e in ref_src_batch[b]])))
@@ -580,7 +580,7 @@ class Model():
                 print1D("error_tgt[{}]".format(b), error_tgt[b])
                 print0D("sum_error_tgt[{}]".format(b),sum_error_tgt[b])
     
-            print("#############################")
+            sys.stderr.write("#############################\n")
             print0D("loss_src (mean)",loss_src)
             print0D("loss_tgt (mean)",loss_tgt)
             print0D("loss",loss)  
