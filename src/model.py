@@ -364,7 +364,7 @@ class Model():
         tpre = time.time()
         for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(train):
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch, lr)
-            #if iter%10000==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
+            if iter%10000==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
@@ -584,7 +584,7 @@ class Model():
             print0D("loss_src (mean)",loss_src)
             print0D("loss_tgt (mean)",loss_tgt)
             print0D("loss",loss)  
-            #sys.exit()
+            sys.exit()
         else:
             embed_src, out_src, last_src, embed_snt_src, embed_tgt, embed_snt_src_plus_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.last_src, self.embed_snt_src, self.embed_tgt, self.embed_snt_src_plus_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
             sys.stderr.write("Encoder\n")
