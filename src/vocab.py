@@ -15,10 +15,14 @@ sys.setdefaultencoding('utf8')
 
 class Vocab():
 
-    def __init__(self, dict_file, net_lid=[]):
+    def __init__(self, dict_file, net_lid=None):
 
         if net_lid is None:
             sys.stderr.write('error: -net_lid option must be set\n')
+            sys.exit()
+
+        if not os.path.exists(dict_file): 
+            sys.stderr.write('error: missing vocab file={}\n'.format(file))
             sys.exit()
 
         self.beg_delim = '｟'

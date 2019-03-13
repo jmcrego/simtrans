@@ -9,6 +9,62 @@ from shutil import copyfile
 from vocab import Vocab
 from tokenizer import build_tokenizer
 
+class topology():
+
+    def __init__(self, file):
+        if not os.path.exists(file): 
+            sys.stderr.write('error: missing network file={}\n'.format(file))
+            sys.exit()
+
+        with open(file, 'r') as f:
+            for line in f:
+                opt, val = line.strip('\n').split()
+                if opt == 'net_type': self.type = val
+                elif opt == 'net_enc': self.enc = val
+                elif opt == 'net_dec': self.dec = val
+                elif opt == 'net_opt': self.opt = val
+                elif opt == 'net_lid': self.lid = val
+                else:
+                    sys.stderr.write('error: bad topology option={}\n'.format(opt))
+                    sys.exit()
+        self.enc_layers = self.enc.split(',')
+        self.dec_layers = self.dec.split(',')
+        sys.stderr.write('Read Network {}\n'.format(file))
+
+    def layer(self, side, l):
+        if side=='enc':
+            if l>=len(self.enc_layers):
+                sys.stderr.write('error: bad enc layer index={}\n'.format(l))
+                sys.exit()
+            fields = self.enc_layers[l].split('-')
+        elif side=='dec':
+            if l>=len(self.dec_layers):
+                sys.stderr.write('error: bad dec layer index={}\n'.format(l))
+                sys.exit()
+            fields = self.dec_layers[l].split('-')
+        else:
+            sys.stderr.write('error: bad layer side={}\n'.format(side))
+            sys.exit()
+
+        if   fields[0].lower() == 'w': return fields[0], 0,              int(fields[1]), float(fields[2]), fields[3] #w-256-0.3-name
+        elif fields[0].lower() == 'c': return fields[0], int(fields[1]), int(fields[2]), float(fields[3]), fields[4] #c-3-256-0.3-name
+        elif fields[0].lower() == 'b': return fields[0], 0,              int(fields[1]), float(fields[2]), fields[3] #b-256-0.3-name
+        elif fields[0].lower() == 'l': return fields[0], 0,              int(fields[1]), float(fields[2]), fields[3] #l-256-0.3-name
+        elif fields[0].lower() == 's': return fields[0], 0,              0,              0.0,              fields[1] #s-last
+        else:
+            sys.stderr.write('error: bad layer type={}\n'.format(fields[0]))
+            sys.exit()
+
+    def write(self, file):
+        with open(file, 'w') as f: 
+            f.write("net_type {}\n".format(self.type))
+            f.write("net_enc {}\n".format(self.enc))
+            f.write("net_dec {}\n".format(self.dec))
+            f.write("net_opt {}\n".format(self.opt))
+            f.write("net_lid {}\n".format(self.lid))
+
+
+
 class Config():
 
     def __init__(self, argv):
@@ -16,7 +72,7 @@ class Config():
 *  -mdir              DIR : directory to save/restore models
    -batch_size        INT : number of examples per batch [32]
    -seed              INT : seed for randomness [12345]
-   -h                     : this message
+   -h                     : extended help message
 
  [LEARNING OPTIONS]
 *  -src_trn          FILE : src training files (comma-separated)
@@ -27,24 +83,10 @@ class Config():
 *  -tgt_val          FILE : tgt validation files (comma-separated)
 *  -tgt_val_lid      FILE : lid of tgt validation files (comma-separated)
 
-   -voc              FILE : src/tgt vocab (needed to initialize learning)
-   -tok              FILE : src/tgt onmt tokenization options (yaml)
+   -voc              FILE : src/tgt vocab file (needed to initialize learning)
+   -tok              FILE : src/tgt onmt tok options yaml file (needed to initialize learning)
+   -net              FILE : network topology file (needed to initialize learning)
 
-   Network topology:
-   -net_wrd        STRING : word src/tgt embeddings size Ex: 256-0.3 (embeddingSize-dropout)
-   -net_enc        STRING : encoder layers (comma-separated list) Ex: c-512-3-0.3,b-512-0.3,b-512-0.3
-                            Each layer follows the next formats:
-                                -Convolutional (c-fiters-kernelSize-dropout)
-                                -Bi-LSTM       (b-hiddenSize-dropout) 
-                                -LSTM
-                                -GRU
-   -net_snt        STRING : src sentence embedding: last, mean, max
-   -net_dec        STRING : decoder layers (comma-separated list) Ex: l-2048-0.2 (type-embeddingSize-dropout)
-                            use -net_dec align for alignment optimization
-   -net_opt        STRING : Optimization method: adam, adagrad, adadelta, sgd, rmsprop
-   -net_lid        STRING : list of LID tags (comma-separated list) Ex: English,French,German
-
-   Training/Optimization:
    -opt_lr          FLOAT : initial learning rate [0.0001]
    -opt_decay       FLOAT : learning rate decay value [0.96]
    -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.0]
@@ -64,12 +106,54 @@ class Config():
    -show_emb              : output src/tgt sentence embeddings
    -show_snt              : output original src/tgt sentences
    -show_idx              : output idx of src/tgt sentences
+""".format(sys.argv.pop(0))
 
-+ Options marked with * must be set. The rest have default values.
+        self.help="""+ Options marked with * must be set. The rest have default values.
 + If -mdir exists in learning mode, learning continues after restoring the last model
 + Training data is always shuffled at every epoch
-+ -show_sim, -show_oov, -show_emb, -show_snt -show_idx can be used at the same time
-""".format(sys.argv.pop(0))
+
+====== Tokenization options (yaml) example ======
+mode: aggressive
+joiner_annotate: True
+segment_numbers: True
+segment_case: True
+segment_alphabet: True
+bpe_model_path: file
+
+====== Network topology options example ======
+net_type align
+net_enc w-256-0.3-both,c-512-3-0.3-src,b-512-0.3-src,b-512-0.3-src,s-last
+net_dec w-256-0.3-both,c-512-3-0.3-tgt,b-512-0.3-tgt,b-512-0.3-tgt,s-last
+net_opt adam
+net_lid English,French,German
+
+Net types:
+    + align (follows Legrand et al.)
+    + translate (follows Schwenk et al.)
+
+Encoder layers (comma-separated list):
+    + The first is word embedding layer
+    + The last indicates how the final state is built (last, mean, max)     
+    + Layers follow the next formats:
+        + Wembedding    (w-embedSize-dropout-name)
+        + Convolutional (c-filters-kernelSize-dropout-name)
+        + Bi-lstm       (b-hiddenSize-dropout-name) 
+        + Lstm          (l-hiddenSize-dropout-name)
+        + Sembedding    (s-finalState)
+
+Decoder layers (comma-separated list):
+    When -net_type is 'align' use the layers desribed in -net_enc (Ex: w-256-0.3-name,c-512-3-0.3-name,b-512-0.3-name,b-512-0.3-name,s-last)
+    When -net_type is 'translate' use WEmbedding and LSTM layers  (Ex: w-256-0.3-name,l-2048-0.2-name)
+
+Network optimization:
+    + adam
+    + adagrad
+    + adadelta
+    + sgd
+    + rmsprop
+
+Network LIDs (comma-separated list)
+"""
 
         self.mdir = None
         self.max_seq_size = 50
@@ -80,26 +164,24 @@ class Config():
         self.tgt_trn = []
         self.tgt_trn_lid = []
         self.src_val = []
+        self.tgt_val = []
         self.tgt_val_lid = []
+        self.src_tst = None
+        self.tgt_tst = None
         self.voc = None
         self.tok = None
+        self.net = None
         #will be created
         self.vocab = None #vocabulary
         self.token = None #onmt tokenizer
-        #network
-        self.net_wrd = None
-        self.net_enc = None
-        self.net_snt = None
-        self.net_dec = None
-        self.net_opt = None
-        self.net_lid = None
+        self.network = None #network topology
         #optimization
         self.opt_lr = 0.0001
         self.opt_decay = 0.96
         self.opt_minlr = 0.0
         self.clip = 0.0
         self.max_sents = 0
-        self.n_epochs = 1
+        self.n_epochs = 1 # epochs to run
         self.last_epoch = 0 # epochs already run
         self.reports = 100
         #inference
@@ -112,18 +194,106 @@ class Config():
         self.show_snt = False
         self.show_idx = False
 
-        self.is_inference = False
-
         self.parse(sys.argv)
+        self.is_inference = self.src_tst is not None
         tf.set_random_seed(self.seed)
         np.random.seed(self.seed)
-        if not self.mdir:
-            sys.stderr.write("error: Missing -mdir option\n{}".format(self.usage))
+        self.create_dir_copy_files()
+
+        ### read network
+        self.network = topology(self.net)
+        ### read vocabulary
+        self.vocab = Vocab(self.voc, self.network.lid)
+        ### read tokenizer
+        if os.path.exists(self.tok): 
+            with open(self.tok) as yamlfile: 
+                tok_opt = yaml.load(yamlfile)
+                self.token = build_tokenizer(tok_opt)
+
+        #################
+        ### inference ###
+        #################
+        if self.is_inference:
+            if not self.epoch:
+                sys.stderr.write("error: Missing -epoch option\n{}".format(self.usage))
+                sys.exit()
+            if not os.path.exists(self.mdir + '/epoch' + self.epoch + '.index'):
+                sys.stderr.write('error: -epoch file {} cannot be find\n{}'.format(self.mdir + '/epoch' + self.epoch + '.index',self.usage))
+                sys.exit()
+            self.max_seq_size = 0
+            self.max_sents = 0
+            return
+
+        ################
+        ### learning ###
+        ################
+        if not len(self.src_trn) or len(self.src_trn)!=len(self.tgt_trn) or len(self.src_trn)!=len(self.tgt_trn_lid):
+            sys.stderr.write('error: bad training files\n{}'.format(self.usage))
             sys.exit()
-        if len(self.mdir)>1 and self.mdir[-1]=="/": self.mdir = self.mdir[0:-1] ### delete ending '/'
-        if self.src_tst: self.inference()
-        elif len(self.src_trn) and len(self.tgt_trn) and len(self.tgt_trn_lid) and len(self.src_val) and len(self.tgt_val) and len(self.tgt_val_lid): self.learn()
-        return
+
+        elif not len(self.src_val) or len(self.src_val)!=len(self.tgt_val) or len(self.src_val)!=len(self.tgt_val_lid): 
+            sys.stderr.write('error: bad validation files\n{}'.format(self.usage))
+            sys.exit()
+
+        if os.path.exists(self.mdir + '/checkpoint'): 
+            ### continuation (update last epoch)
+            for e in range(999,0,-1):
+                if os.path.exists(self.mdir+"/epoch{}.index".format(e)): 
+                    self.last_epoch = e
+                    break
+            sys.stderr.write("learning continuation: last epoch is {}\n".format(self.last_epoch))
+
+        else:
+            sys.stderr.write("learning from scratch\n")
+
+
+    def create_dir_copy_files(self):
+
+        if os.path.exists(self.mdir + '/checkpoint') and (self.voc is not None or self.tok is not None or self.net is not None): 
+            sys.stderr.write('error: replacing voc/tok/net while exists previous {}/checkpoint\n'.format(self.mdir))
+            sys.exit()
+
+        if not os.path.exists(self.mdir):
+            os.makedirs(self.mdir)
+            sys.stderr.write('created mdir={}\n'.format(self.mdir))
+        else:
+            sys.stderr.write('reusing mdir={}\n'.format(self.mdir))
+
+
+        if self.voc is not None:
+            copyfile(self.voc, self.mdir + "/vocab")
+            sys.stderr.write('copied voc file={}\n'.format(self.voc))
+    
+        if self.net is not None:
+            copyfile(self.net, self.mdir + "/network")
+            sys.stderr.write('copied net file={}\n'.format(self.net))
+
+        if self.tok is not None: 
+            with open(self.tok) as f: 
+                tok_opt = yaml.load(f)
+                ### replaces/creates vocab option in token
+                tok_opt["vocabulary"] = self.mdir + '/vocab'
+                ### if exists bpe_model_path option, copy model to mdir and replaces bpe_model_path in token
+                if 'bpe_model_path' in tok_opt:
+                    copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe")
+                    sys.stderr.write('copied bpe file={}\n'.format(tok_opt['bpe_model_path']))
+                    tok_opt['bpe_model_path'] = self.mdir + '/bpe'
+                ### dump token to mdir
+                with open(self.mdir + '/token', 'w') as outfile: 
+                    yaml.dump(tok_opt, outfile, default_flow_style=True)      
+                sys.stderr.write('copied tok file={}\n'.format(self.tok))
+
+        self.voc = self.mdir + "/vocab"
+        self.net = self.mdir + "/network"
+        self.tok = self.mdir + "/token"
+
+        if not os.path.exists(self.voc): 
+            sys.stderr.write('error: cannot find vocabulary file\n{}'.format(self.usage))
+            sys.exit()
+        if not os.path.exists(self.net): 
+            sys.stderr.write('error: cannot find network file\n{}'.format(self.usage))
+            sys.exit()
+
 
     def parse(self, argv):
         while len(argv):
@@ -141,13 +311,7 @@ class Config():
             elif (tok=="-tgt_val_lid" and len(argv)):    self.tgt_val_lid = argv.pop(0).split(',')
             elif (tok=="-voc" and len(argv)):            self.voc = argv.pop(0)
             elif (tok=="-tok" and len(argv)):            self.tok = argv.pop(0)
-            #network
-            elif (tok=="-net_wrd" and len(argv)):        self.net_wrd = argv.pop(0)
-            elif (tok=="-net_enc" and len(argv)):        self.net_enc = argv.pop(0)
-            elif (tok=="-net_snt" and len(argv)):        self.net_snt = argv.pop(0)
-            elif (tok=="-net_dec" and len(argv)):        self.net_dec = argv.pop(0)
-            elif (tok=="-net_opt" and len(argv)):        self.net_opt = argv.pop(0)
-            elif (tok=="-net_lid" and len(argv)):        self.net_lid = argv.pop(0)
+            elif (tok=="-net" and len(argv)):            self.net = argv.pop(0)
             #optimization
             elif (tok=="-opt_lr" and len(argv)):         self.opt_lr = float(argv.pop(0))
             elif (tok=="-opt_decay" and len(argv)):      self.opt_decay = float(argv.pop(0))
@@ -166,116 +330,24 @@ class Config():
             elif (tok=="-show_snt"):                     self.show_snt = True
             elif (tok=="-show_idx"):                     self.show_idx = True
             elif (tok=="-h"):
-                sys.stderr.write("{}".format(self.usage))
+                sys.stderr.write("{}\n{}\n".format(self.usage,self.help))
                 sys.exit()
             else:
                 sys.stderr.write('error: unparsed {} option\n'.format(tok))
                 sys.stderr.write("{}".format(self.usage))
                 sys.exit()
 
-    def read_vocab_token(self):
-        ### read vocabulary
-        self.vocab = Vocab(self.mdir + "/vocab", self.net_lid)
-        ### read tokenizer
-        if os.path.exists(self.mdir + '/token'): 
-            self.tok = self.mdir + '/token'
-            with open(self.mdir + '/token') as yamlfile: 
-                tok_opt = yaml.load(yamlfile)
-                self.token = build_tokenizer(tok_opt)
+        if not self.mdir:
+            sys.stderr.write("error: Missing -mdir option\n{}".format(self.usage))
+            sys.exit()
+        if len(self.mdir)>1 and self.mdir[-1]=="/": self.mdir = self.mdir[0:-1] ### delete ending '/'
 
-    def inference(self):
-        if not self.epoch:
-            sys.stderr.write("error: Missing -epoch option\n{}".format(self.usage))
-            sys.exit()
-        if not os.path.exists(self.mdir + '/epoch' + self.epoch + '.index'):
-            sys.stderr.write('error: -epoch file {} cannot be find\n{}'.format(self.mdir + '/epoch' + self.epoch + '.index',self.usage))
-            sys.exit()
-        if not os.path.exists(self.mdir + '/topology'): 
-            sys.stderr.write('error: topology file: {} cannot be find\n{}'.format(self.mdir + '/topology',self.usage))
-            sys.exit()
-        if not os.path.exists(self.mdir + '/vocab'): 
-            sys.stderr.write('error: vocab file: {} cannot be find\n{}'.format(self.mdir + '/vocab',self.usage))
-            sys.exit()
-        argv = self.read_topology()
-        self.parse(argv)
-        self.read_vocab_token()
-        self.max_seq_size = 0
-        self.max_sents = 0
-        self.is_inference = True
-        return  
-
-    def learn(self):
-        ###
-        ### continuation
-        ###
-        if os.path.exists(self.mdir): 
-            if not os.path.exists(self.mdir + '/topology'): 
-                sys.stderr.write('error: topology file: {} cannot be find\n{}'.format(self.mdir + '/topology',self.usage))
-                sys.exit()
-            if not os.path.exists(self.mdir + '/vocab'): 
-                sys.stderr.write('error: vocab file: {} cannot be find\n{}'.format(self.mdir + '/vocab',self.usage))
-                sys.exit()
-            if not os.path.exists(self.mdir + '/checkpoint'): 
-                sys.stderr.write('error: checkpoint file: {} cannot be find\ndelete dir {} ???\n{}'.format(self.mdir + '/checkpoint', self.mdir,self.usage))
-                sys.exit()
-            ### options in topology file override those passed in command line
-            argv = self.read_topology()
-            self.parse(argv)
-            self.read_vocab_token()
-            ### update last epoch
-            for e in range(999,0,-1):
-                if os.path.exists(self.mdir+"/epoch{}.index".format(e)): 
-                    self.last_epoch = e
-                    break
-            sys.stderr.write("learning continuation: last epoch is {}\n".format(self.last_epoch))
-        ###
-        ### learning from scratch
-        ###
-        else:
-            if not os.path.exists(self.mdir): os.makedirs(self.mdir)
-            #copy vocabularies
-            copyfile(self.voc, self.mdir + "/vocab")
-            #copy tokenizers if exist
-            if self.tok is not None: 
-                with open(self.tok) as yamlfile: 
-                    tok_opt = yaml.load(yamlfile)
-                    ### replaces/creates vocab option in token
-                    tok_opt["vocabulary"] = self.mdir + '/vocab'
-                    ### if exists bpe_model_path option, copy model to mdir and replaces bpe_model_path in token
-                    if 'bpe_model_path' in tok_opt:
-                        copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe")
-                        ### replace token file with new bpe_model_path 
-                        tok_opt['bpe_model_path'] = self.mdir + '/bpe'
-                        with open(self.mdir + '/token', 'w') as outfile: 
-                            yaml.dump(tok_opt, outfile, default_flow_style=True)
-                    else:
-                        ### copy token file
-                        copyfile(self.tok, self.mdir + "/token")
-            #read vocab and token
-            self.read_vocab_token()
-            #write topology file
-            with open(self.mdir + "/topology", 'w') as f: 
-                for opt, val in vars(self).items():
-                    if opt.startswith("net"): 
-                        f.write("{} {}\n".format(opt,val))
-            sys.stderr.write("learning from scratch\n")
-        return  
 
     def write_config(self):
-        if not os.path.exists(self.mdir): 
-            os.makedirs(self.mdir)
         file = self.mdir + "/epoch"+str(self.last_epoch)+".config"
         with open(file,"w") as f:
             for name, val in vars(self).items():
-                if name=="usage" or name.startswith("vocab") or name.startswith("token"): continue
+                if name=="usage" or name.startswith("voc") or name.startswith("tok") or name.startswith("net"): continue
                 f.write("{} {}\n".format(name,val))
 
-    def read_topology(self):
-        argv = []
-        with open(self.mdir + "/topology", 'r') as f:
-            for line in f:
-                opt, val = line.split()
-                argv.append('-'+opt)
-                argv.append(val)
-        return argv
 

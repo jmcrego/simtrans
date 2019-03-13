@@ -26,7 +26,7 @@ class Dataset():
         self.maxtoksperline = 512
         self.is_inference = False
         self.is_bitext = False
-        self.is_align = config.net_dec=='align'
+        self.is_align = config.network.type=='align'
 
         ### check number of fSRC/fTGT/LID parameters are correct
         if len(fSRC) and len(fSRC)==len(fTGT) and len(fSRC)==len(LID): 
@@ -138,19 +138,18 @@ class Dataset():
         for slen, src, tgt in self.data: # src='<bos> my sentence <eos>' tgt='LID|<bos> my stencence <eos>'
             if self.is_align:
                 tgt[0] = self.vocab.str_bos #i dont want LID as first token
-                if len(prev_tgt)==0 or np.random.random_sample()>=0.5: #### parallel (non divergent) example
+                if self.is_inference or len(prev_tgt)==0 or np.random.random_sample()>=0.5: #### parallel (non divergent) example
                     isrc, iref_src, nunk_src = self.wrd2iwrd_ref(src, False)
                     itgt, iref_tgt, nunk_tgt = self.wrd2iwrd_ref(tgt, False) 
-                else: #### divergent example 
-                    if not self.is_inference:
-                        tgt = prev_tgt
+                else: #### divergent example
+                    tgt=prev_tgt
+                    n_divergent += 1
                     isrc, iref_src, nunk_src = self.wrd2iwrd_ref(src, True)
                     itgt, iref_tgt, nunk_tgt = self.wrd2iwrd_ref(tgt, True) 
-                    n_divergent += 1
+                prev_tgt = tgt
             else:
                 isrc, iref_src, nunk_src = self.src2isrc_iref(src)
                 itgt, iref_tgt, nunk_tgt = self.tgt2itgt_iref(tgt)
-            prev_tgt = tgt
 #            print("src\t{}".format(" ".join(str(e) for e in src))) #src <bos> Saturday , April 26 will be a workday , and in exchange , Friday , May 2 will be a day off . <eos>
 #            print("isrc\t{}".format(" ".join(str(e) for e in isrc))) #('isrc', [2, 11294, 16, 1413, 444, 53518, 17213, 13781, 0, 16, 15391, 31567, 27050, 16, 5325, 16, 8281, 340, 53518, 17213, 13781, 22502, 38251, 18, 3])
 #            print("iref_src\t{}".format(" ".join(str(e) for e in iref_src))) #('iref', [7554, 0, 435, 16826, 46749, 51581, 33513, 22509, 51097, 41074, 16816, 51581, 33513, 22509, 44419, 34269, 52654, 340, 35133, 18, 3])
