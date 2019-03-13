@@ -13,11 +13,13 @@ from idf import SentIdf
 def print2D(t,m):
     sys.stderr.write(t+"\n")
     for row in m:
-        sys.stderr.write(" ".join(["{:10.3f}".format(e) for e in row])+"\n")
+        sys.stderr.write(" ".join(["{:10.3f}".format(e) for e in row]))
+        sys.stderr.write("\n")
 
 def print1D(t,m):
     sys.stderr.write(t+"\n")
-    sys.stderr.write(" ".join(["{:10.3f}".format(e) for e in m])+"\n")
+    sys.stderr.write(" ".join(["{:10.3f}".format(e) for e in m]))
+    sys.stderr.write("\n")
 
 def print0D(t,m):
     sys.stderr.write(t+"\n")
