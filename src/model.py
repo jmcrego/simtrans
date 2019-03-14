@@ -195,7 +195,7 @@ class Model():
         S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
 
         for l in range(len(self.config.network.dec_layers)):
-            t, f, s, d, n = self.config.network.layer('dec',l)
+            t, f, s, d, n = self.config.network.layer('enc',l)
             if t=='w':
                 self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, s, d, n) #[B,S,E]
                 self.out_tgt = self.embed_tgt
@@ -315,7 +315,7 @@ class Model():
         if self.config.network.type == 'align':
             self.add_encoder_src() 
             self.add_encoder_tgt()  
-            if not self.config.is_inference:
+            if not self.config.is_inference: # training
                 self.add_align()
                 self.add_loss_align()
                 self.add_train()
@@ -324,7 +324,7 @@ class Model():
             if self.config.is_inference:
                 self.add_encoder_src() 
                 self.add_encoder_tgt()  
-            else: # traiining
+            else: # training
                 self.add_encoder_src() 
                 self.add_decoder_tgt()
                 self.add_loss_trans()
