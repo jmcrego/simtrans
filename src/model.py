@@ -194,7 +194,7 @@ class Model():
         B = tf.shape(self.input_tgt)[0] #batch size
         S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
 
-        for l in range(len(self.config.network.dec_layers)):
+        for l in range(len(self.config.network.enc_layers)):
             t, f, s, d, n = self.config.network.layer('enc',l)
             if t=='w':
                 self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, s, d, n) #[B,S,E]
@@ -209,7 +209,7 @@ class Model():
             elif t=='s':
                 self.embed_snt_tgt = self.sembedding(self.out_tgt, self.last_tgt, n, self.len_tgt)
             else:
-                sys.stderr.write("error: bad decoder {}-th layer type\n".format(l))
+                sys.stderr.write("error: bad encoder {}-th layer type\n".format(l))
                 sys.exit()
 
     def add_decoder_tgt(self):
