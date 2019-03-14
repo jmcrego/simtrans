@@ -311,20 +311,39 @@ class Model():
     def build_graph(self):
         self.add_placeholders()
 
-        if self.config.is_inference:
+
+        if self.config.network.type == 'align':
             self.add_encoder_src() 
             self.add_encoder_tgt()  
-        else: ### traiing
-            if self.config.network.type == 'align':
-                self.add_encoder_src() 
-                self.add_encoder_tgt()  
+            if not self.config.is_inference:
                 self.add_align()
                 self.add_loss_align()
-            elif self.config.network.type == 'translate':
+                self.add_train()
+
+        elif self.config.network.type == 'translate':
+            if self.config.is_inference:
+                self.add_encoder_src() 
+                self.add_encoder_tgt()  
+            else: # traiining
                 self.add_encoder_src() 
                 self.add_decoder_tgt()
                 self.add_loss_trans()
-            self.add_train()
+                self.add_train()
+
+#        if self.config.is_inference:
+#            self.add_encoder_src() 
+#            self.add_encoder_tgt()  
+#        else: ### training
+#            if self.config.network.type == 'align':
+#                self.add_encoder_src() 
+#                self.add_encoder_tgt()  
+#                self.add_align()
+#                self.add_loss_align()
+#            elif self.config.network.type == 'translate':
+#                self.add_encoder_src() 
+#                self.add_decoder_tgt()
+#                self.add_loss_trans()
+#            self.add_train()
 
         pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
         sys.stderr.write("Total Enc/Dec parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
