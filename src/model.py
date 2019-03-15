@@ -69,6 +69,7 @@ class Model():
             self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.01, maxval=0.01), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
+            embedded = tf.math.l2_normalize(embedded,axis=2) ### normalize along axis E
         return embedded
 
 
