@@ -122,8 +122,14 @@ bpe_model_path: file
 
 ====== Network topology options example ======
 net_type align
-net_enc w-256-0.3-both,c-512-3-0.3-src,b-512-0.3-src,b-512-0.3-src,s-last
-net_dec w-256-0.3-both,c-512-3-0.3-tgt,b-512-0.3-tgt,b-512-0.3-tgt,s-last
+net_enc w-256-0.3-both,c-3-512-0.3-src,b-512-0.3-src,b-512-0.3-src,s-last
+net_dec w-256-0.3-both,c-3-512-0.3-tgt,b-512-0.3-tgt,b-512-0.3-tgt,s-last
+net_opt adam
+net_lid English,French,German
+
+net_type translate
+net_enc w-256-0.3-both,b-512-0.3-src,b-512-0.3-src,s-last
+net_dec w-256-0.3-both,l-1024-0.3-tgt
 net_opt adam
 net_lid English,French,German
 
