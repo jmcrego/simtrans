@@ -258,7 +258,7 @@ class Model():
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
-            self.align = tf.minimum(self.align, 10.0) ### values in matrix must are limited to 10.0 to avoid 'nan' when exp(s)
+#            self.align = tf.minimum(self.align, 10.0) ### values in matrix must are limited to 10.0 to avoid 'nan' when exp(s)
             self.align_t = tf.transpose(self.align, [0, 2, 1]) #[B,St,Ss]
 
             #equation (2) [aggregation of each src word]
