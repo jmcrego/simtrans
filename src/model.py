@@ -69,7 +69,7 @@ class Model():
             self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.01, maxval=0.01), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
-            embedded = tf.nn.l2_normalize(embedded,2) ### normalize along axis E
+#            embedded = tf.nn.l2_normalize(embedded,2) ### normalize along axis E
         return embedded
 
 
@@ -258,6 +258,7 @@ class Model():
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
+            self.align = tf.minimum(self.align, 10.0) ### values in matrix must are limited to 10.0 to avoid 'nan' when exp(s)
             self.align_t = tf.transpose(self.align, [0, 2, 1]) #[B,St,Ss]
 
             #equation (2) [aggregation of each src word]
