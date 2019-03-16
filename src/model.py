@@ -595,7 +595,7 @@ class Model():
                 print0D("sum_error[{}]".format(b),sum_error_src[b])
     
                 #print2D("tgt out[{}]".format(b), out_tgt[b])
-                print1D("tgt out[{}][1]".format(b), out_sgt[b][1])
+                print1D("tgt out[{}][1]".format(b), out_tgt[b][1])
                 print2D("tgt Align[{}]".format(b), align[b])
                 print2D("exp(A)[{}]".format(b), exp_rs_tgt[b])
                 print1D("sum_exp(A)[{}]".format(b), sum_exp_rs_tgt[b])
