@@ -258,7 +258,7 @@ class Model():
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
-#            self.align = tf.minimum(self.align, 10.0) ### values in matrix must are limited to 10.0 to avoid 'nan' when exp(s)
+#            self.align = tf.div(self.align, 2.0) ### values in matrix must are limited to 10.0 to avoid 'nan' when exp(s)
             self.align_t = tf.transpose(self.align, [0, 2, 1]) #[B,St,Ss]
 
             #equation (2) [aggregation of each src word]
@@ -584,6 +584,7 @@ class Model():
                 sys.stderr.write("iref_tgt\t{}\n".format(" ".join([str(e) for e in ref_tgt_batch[b]])))
 
                 #print2D("src out[{}]".format(b), out_src[b])
+                print1D("src out[{}][1]".format(b), out_src[b][1])
                 print2D("src Align_t[{}]".format(b), align_t[b])
                 print2D("exp(A)[{}]".format(b), exp_rs_src[b])
                 print1D("sum_exp(A)[{}]".format(b), sum_exp_rs_src[b])
@@ -594,6 +595,7 @@ class Model():
                 print0D("sum_error[{}]".format(b),sum_error_src[b])
     
                 #print2D("tgt out[{}]".format(b), out_tgt[b])
+                print1D("tgt out[{}][1]".format(b), out_sgt[b][1])
                 print2D("tgt Align[{}]".format(b), align[b])
                 print2D("exp(A)[{}]".format(b), exp_rs_tgt[b])
                 print1D("sum_exp(A)[{}]".format(b), sum_exp_rs_tgt[b])
