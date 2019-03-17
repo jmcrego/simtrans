@@ -9,7 +9,7 @@ from shutil import copyfile
 from vocab import Vocab
 from tokenizer import build_tokenizer
 
-class topology():
+class network():
 
     def __init__(self, file):
         if not os.path.exists(file): 
@@ -19,33 +19,54 @@ class topology():
         with open(file, 'r') as f:
             for line in f:
                 opt, val = line.strip('\n').split()
-                if opt == 'net_type': self.type = val
-                elif opt == 'net_enc': self.enc = val
-                elif opt == 'net_dec': self.dec = val
-                elif opt == 'net_opt': self.opt = val
-                elif opt == 'net_lid': self.lid = val
+                if opt == 'enc': self.enc = val
+                elif opt == 'ali': self.ali = val
+                elif opt == 'trn': self.trn = val
+                elif opt == 'opt': self.opt = val
+                elif opt == 'lid': self.lid = val
                 else:
-                    sys.stderr.write('error: bad topology option={}\n'.format(opt))
+                    sys.stderr.write('error: bad network option={}\n'.format(opt))
                     sys.exit()
-        self.enc_layers = self.enc.split(',')
-        self.dec_layers = self.dec.split(',')
+        self.enc_layers = []
+        self.ali_layers = []
+        self.trn_layers = []
+        if self.enc is not None:
+            self.enc_layers = self.enc.split(',')
+        if self.ali is not None:
+            self.ali_layers = self.ali.split(',')
+        if self.trn is not None:
+            self.trn_layers = self.trn.split(',')
         sys.stderr.write('Read Network {}\n'.format(file))
 
-    def layer(self, side, l):
-        if side=='enc':
+    def nlayers(self, which):
+        if which=='enc': return len(self.enc_layers)
+        elif which=='ali': return len(self.ali_layers)
+        elif which=='trn': return len(self.trn_layers)
+        else:
+            sys.stderr.write('error: unknown layer={}\n'.format(which))
+            sys.exit()
+
+    def layer(self, which, l):
+        if which=='enc':
             if l>=len(self.enc_layers):
                 sys.stderr.write('error: bad enc layer index={}\n'.format(l))
                 sys.exit()
             fields = self.enc_layers[l].split('-')
-        elif side=='dec':
-            if l>=len(self.dec_layers):
-                sys.stderr.write('error: bad dec layer index={}\n'.format(l))
+        elif which=='ali':
+            if l>=len(self.ali_layers):
+                sys.stderr.write('error: bad ali layer index={}\n'.format(l))
                 sys.exit()
-            fields = self.dec_layers[l].split('-')
+            fields = self.ali_layers[l].split('-')
+        elif which=='trn':
+            if l>=len(self.trn_layers):
+                sys.stderr.write('error: bad trn layer index={}\n'.format(l))
+                sys.exit()
+            fields = self.trn_layers[l].split('-')
         else:
-            sys.stderr.write('error: bad layer side={}\n'.format(side))
+            sys.stderr.write('error: unknown layer={}\n'.format(which))
             sys.exit()
 
+        ### returns: type, filters, units, dropout, name
         if   fields[0].lower() == 'w': return fields[0], 0,              int(fields[1]), float(fields[2]), fields[3] #w-256-0.3-name
         elif fields[0].lower() == 'c': return fields[0], int(fields[1]), int(fields[2]), float(fields[3]), fields[4] #c-3-256-0.3-name
         elif fields[0].lower() == 'b': return fields[0], 0,              int(fields[1]), float(fields[2]), fields[3] #b-256-0.3-name
@@ -57,11 +78,13 @@ class topology():
 
     def write(self, file):
         with open(file, 'w') as f: 
-            f.write("net_type {}\n".format(self.type))
-            f.write("net_enc {}\n".format(self.enc))
-            f.write("net_dec {}\n".format(self.dec))
-            f.write("net_opt {}\n".format(self.opt))
-            f.write("net_lid {}\n".format(self.lid))
+            f.write("enc {}\n".format(self.enc))
+            if self.ali:
+                f.write("ali {}\n".format(self.ali))
+            if self.trn:
+                f.write("trn {}\n".format(self.trn))
+            f.write("opt {}\n".format(self.opt))
+            f.write("lid {}\n".format(self.lid))
 
 
 
@@ -121,23 +144,16 @@ segment_alphabet: True
 bpe_model_path: file
 
 ====== Network topology options example ======
-net_type align
-net_enc w-256-0.3-both,c-3-512-0.3-src,b-512-0.3-src,b-512-0.3-src,s-last
-net_dec w-256-0.3-both,c-3-512-0.3-tgt,b-512-0.3-tgt,b-512-0.3-tgt,s-last
-net_opt adam
-net_lid English,French,German
+enc w-256-0.3-both,c-3-512-0.3-src,b-512-0.3-src,b-512-0.3-src,s-last
+ali w-256-0.3-both,c-3-512-0.3-tgt,b-512-0.3-tgt,b-512-0.3-tgt,s-last
+trn w-256-0.3-both,l-1024-0.3-tgt
+opt adam
+lid English,French,German
 
-net_type translate
-net_enc w-256-0.3-both,b-512-0.3-src,b-512-0.3-src,s-last
-net_dec w-256-0.3-both,l-1024-0.3-tgt
-net_opt adam
-net_lid English,French,German
+- enc layer is always used
+- at least one ali/trn layer must be used (both are also alowed)
 
-Net types:
-    + align (follows Legrand et al.)
-    + translate (follows Schwenk et al.)
-
-Encoder layers (comma-separated list):
+enc/ali layers (comma-separated list):
     + The first is word embedding layer
     + The last indicates how the final state is built (last, mean, max)     
     + Layers follow the next formats:
@@ -147,9 +163,8 @@ Encoder layers (comma-separated list):
         + Lstm          (l-hiddenSize-dropout-name)
         + Sembedding    (s-finalState)
 
-Decoder layers (comma-separated list):
-    When -net_type is 'align' use the layers desribed in -net_enc (Ex: w-256-0.3-name,c-512-3-0.3-name,b-512-0.3-name,b-512-0.3-name,s-last)
-    When -net_type is 'translate' use WEmbedding and LSTM layers  (Ex: w-256-0.3-name,l-2048-0.2-name)
+trn layers (comma-separated list):
+    use WEmbedding and Lstm/Bi-lstm layers  (Ex: w-256-0.3-name,l-2048-0.2-name)
 
 Network optimization:
     + adam
@@ -201,13 +216,18 @@ Network LIDs (comma-separated list)
         self.show_idx = False
 
         self.parse(sys.argv)
-        self.is_inference = self.src_tst is not None
+        self.is_inference = False
+        if self.src_tst is not None:
+            self.is_inference = True
+            self.max_seq_size = 0
+            self.max_sents = 0
+
         tf.set_random_seed(self.seed)
         np.random.seed(self.seed)
         self.create_dir_copy_files()
 
         ### read network
-        self.network = topology(self.net)
+        self.network = network(self.net)
         ### read vocabulary
         self.vocab = Vocab(self.voc, self.network.lid)
         ### read tokenizer

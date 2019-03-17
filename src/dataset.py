@@ -20,25 +20,15 @@ class Dataset():
     def __init__(self, fSRC, fTGT, LID, config):
         self.vocab = config.vocab
         self.max_sents = config.max_sents
-        self.max_seq_size = config.max_seq_size
         self.data = []
         self.data_batch = []
         self.maxtoksperline = 512
-        self.is_inference = False
-        self.is_bitext = False
-        self.is_align = config.network.type=='align'
+        self.is_inference = config.is_inference
 
-        ### check number of fSRC/fTGT/LID parameters are correct
-        if len(fSRC) and len(fSRC)==len(fTGT) and len(fSRC)==len(LID): 
-            self.is_bitext = True ### training
-        elif len(fSRC) and len(fSRC)==len(fTGT) and len(LID)==0:       
-            self.is_inference = True ### inference with src/tgt
-            self.is_bitext = True
-        elif len(fSRC) and len(fTGT)==0 and len(LID)==0:               
-            self.is_inference = True ### inference with src
+        if len(fSRC) == len(fTGT):
+            self.is_bitext = True 
         else:
-            sys.stderr.write('error: bad number of input files {} {} {}\n'.format(len(fSRC),len(fTGT),len(LID)))
-            sys.exit()
+            self.is_bitext = False
 
         ### check lid's exist in vocab
         for lid in LID:
@@ -46,6 +36,10 @@ class Dataset():
             if not self.vocab.exists(lid):
                 sys.stderr.write('error: LID={} does not exists in vocab\n'.format(lid))
                 sys.exit()
+
+        if (len(LID) and len(fSRC)!=len(LID)) or (len(fTGT) and len(fSRC)!=len(fTGT)):
+            sys.stderr.write('error: bad number of input files {} {} {}\n'.format(len(fSRC),len(fTGT),len(LID)))
+            sys.exit()
 
         ###
         ### Read src/tgt file/s
@@ -62,7 +56,7 @@ class Dataset():
                     sys.stderr.write('error: cannot find tgt file: {}\n'.format(ftgt))
                     sys.exit()
                 sys.stderr.write('Reading {}\n'.format(ftgt))
-            if len(LID): 
+            if len(LID):
                 str_lid = self.vocab.beg_delim + LID[ifile] + self.vocab.end_delim
                 sys.stderr.write('Using LID={}\n'.format(str_lid))
 
@@ -84,14 +78,9 @@ class Dataset():
                     src = sline.split(' ')
 
                 ### truncate if too long even for inference
-                if self.max_seq_size==0 and len(src)>self.maxtoksperline: 
+                if len(src)>self.maxtoksperline: 
                     sys.stderr.write('warning: src sentence sized of {} tokens truncated to {}\n'.format(len(src),self.maxtoksperline))
                     src = src[0:self.maxtoksperline]
-
-                src.insert(0,self.vocab.str_bos)
-                src.append(self.vocab.str_eos)
-                ### src is '<bos> my sentence <eos>'
-                #print("src: "+" ".join([str(e) for e in src]))
 
                 tgt = []
                 if self.is_bitext: 
@@ -102,20 +91,15 @@ class Dataset():
                         tgt = tline.split(' ')
 
                     ### truncate if too long even for inference
-                    if self.max_seq_size==0 and len(tgt)>self.maxtoksperline: 
+                    if len(tgt)>self.maxtoksperline: 
                         sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to {}\n'.format(len(tgt),self.maxtoksperline))
                         tgt = tgt[0:self.maxtoksperline]
 
-                    if self.is_inference: 
-                        tgt.insert(0,self.vocab.str_bos)
-                    else: ### is inference
-                        tgt.insert(0,str_lid)
-                    tgt.append(self.vocab.str_eos)
-                ### tgt is: LID|<bos> my sentence <eos>
-                #print("tgt: "+" ".join([str(e) for e in tgt]))
+                #print("src\t{}".format(" ".join(str(e) for e in src))) 
+                #print("tgt\t{}".format(" ".join(str(e) for e in tgt))) 
 
-                if self.is_inference or config.max_seq_size==0 or (len(src)-2<=config.max_seq_size and len(tgt)-2<=config.max_seq_size):
-                    self.data.append([len(src)-2,src,tgt])
+                if self.is_inference or (len(src)<=config.max_seq_size and len(tgt)<=config.max_seq_size):
+                    self.data.append([len(src),src,tgt,str_lid])
     
             fs.close()
             if self.is_bitext: ft.close()
@@ -126,44 +110,40 @@ class Dataset():
         ###
         ### sort by source length to allow batches with similar number of src tokens
         ###
+        sys.stderr.write('(sorting examples)\n')
         if not self.is_inference: 
             self.data.sort(key=lambda x: x[0])
 
         ###
         ### build data_batch
         ###
+        sys.stderr.write('(building batches)\n')
         batch = []
         prev_tgt = []
         n_divergent = 0
-        for slen, src, tgt in self.data: # src='<bos> my sentence <eos>' tgt='LID|<bos> my stencence <eos>'
-            if self.is_align:
-                tgt[0] = self.vocab.str_bos #i dont want LID as first token
-                if self.is_inference or len(prev_tgt)==0 or np.random.random_sample()>=0.5: #### parallel (non divergent) example
-                    isrc, iref_src, nunk_src = self.wrd2iwrd_ref(src, False)
-                    itgt, iref_tgt, nunk_tgt = self.wrd2iwrd_ref(tgt, False) 
-                else: #### divergent example
-                    tgt=prev_tgt
-                    n_divergent += 1
-                    isrc, iref_src, nunk_src = self.wrd2iwrd_ref(src, True)
-                    itgt, iref_tgt, nunk_tgt = self.wrd2iwrd_ref(tgt, True) 
-                prev_tgt = tgt
-            else:
-                isrc, iref_src, nunk_src = self.src2isrc_iref(src)
-                itgt, iref_tgt, nunk_tgt = self.tgt2itgt_iref(tgt)
-#            print("src\t{}".format(" ".join(str(e) for e in src))) #src <bos> Saturday , April 26 will be a workday , and in exchange , Friday , May 2 will be a day off . <eos>
-#            print("isrc\t{}".format(" ".join(str(e) for e in isrc))) #('isrc', [2, 11294, 16, 1413, 444, 53518, 17213, 13781, 0, 16, 15391, 31567, 27050, 16, 5325, 16, 8281, 340, 53518, 17213, 13781, 22502, 38251, 18, 3])
-#            print("iref_src\t{}".format(" ".join(str(e) for e in iref_src))) #('iref', [7554, 0, 435, 16826, 46749, 51581, 33513, 22509, 51097, 41074, 16816, 51581, 33513, 22509, 44419, 34269, 52654, 340, 35133, 18, 3])
-#            print("nunk_src",nunk_src) #('nunk_src', 1)
-            ### when not is_bitext itgt, iref are [], []
-            ### otherwise
-#            print("tgt\t{}".format(" ".join(str(e) for e in tgt))) #tgt LIDisFrench Le Samedi 25 avril sera un jour de travail pour avoir un jour de repos le vendredi 2 mai . <eos>
-#            print("itgt\t{}".format(" ".join(str(e) for e in itgt))) #('itgt', [4, 7554, 0, 435, 16826, 46749, 51581, 33513, 22509, 51097, 41074, 16816, 51581, 33513, 22509, 44419, 34269, 52654, 340, 35133, 18])
-#            print("iref_tgt\t{}".format(" ".join(str(e) for e in iref_tgt))) #('iref', [7554, 0, 435, 16826, 46749, 51581, 33513, 22509, 51097, 41074, 16816, 51581, 33513, 22509, 44419, 34269, 52654, 340, 35133, 18, 3])
-#            print("nunk_tgt",nunk_tgt) #('nunk_tgt', 1)
-            #### when is_inference
-            #tgt is: <bos> Le Samedi 25 avril sera un jour de travail pour avoir un jour de repos le vendredi 2 mai . <eos>
-            #itgt is: #('itgt', [2, 7554, 0, 435, 16826, 46749, 51581, 33513, 22509, 51097, 41074, 16816, 51581, 33513, 22509, 44419, 34269, 52654, 340, 35133, 18])
-            batch.append([src, tgt, isrc, itgt, iref_src, iref_tgt, nunk_src, nunk_tgt])
+        for slen, src, tgt, lid in self.data: # src='my sentence' tgt='my sentence <lid>'
+            sign = -1.0 ### not divergent
+            if not self.is_inference and config.network.ali is not None and len(prev_tgt)>0 and np.random.random_sample()>=0.5: #### divergent example
+                tgt = prev_tgt ### delete <bos> and <eos> added previously
+                sign = 1.0
+
+            isrc, div_src, nunk_src = self.src2isrc_div(src,sign)
+            itgt, div_tgt, iwrd, iref, nunk_tgt = self.tgt2itgt_div_iwrd_iref(tgt,sign,lid) #if not bitext, returns [], [], [], 0 
+            prev_tgt = tgt[1:-1]
+
+            #print("{}\nsrc\t{}".format(slen," ".join(str(e) for e in src))) 
+            #print("isrc\t{}".format(" ".join(str(e) for e in isrc))) 
+            #print("div_src\t{}".format(" ".join(str(e) for e in div_src))) 
+            #print("nunk_src\t{}".format(nunk_src))
+            #
+            #print("tgt\t{}".format(" ".join(str(e) for e in tgt))) 
+            #print("itgt\t{}".format(" ".join(str(e) for e in itgt))) 
+            #print("div_tgt\t{}".format(" ".join(str(e) for e in div_tgt))) 
+            #print("nunk_tgt\t{}".format(nunk_tgt))
+            #print("iwrd\t{}".format(" ".join(str(e) for e in iwrd))) 
+            #print("iref\t{}".format(" ".join(str(e) for e in iref))) 
+
+            batch.append([src, tgt, isrc, itgt, iwrd, iref, div_src, div_tgt, nunk_src, nunk_tgt])
             if len(batch)==config.batch_size:
                 self.data_batch.append(batch)
                 batch = []
@@ -172,51 +152,46 @@ class Dataset():
 
         sys.stderr.write('(dataset contains {} batches with up to {} examples each. {} divergent examples)\n'.format(len(self.data_batch), config.batch_size, n_divergent))
 
-    def wrd2iwrd_ref(self, wrd, is_divergent):
-        iwrd = []
-        ref = []
-        nunk = 0
-        for w in wrd:
-            iwrd.append(self.vocab.get(w))
-            if is_divergent: ref.append(1.0)
-            else: ref.append(-1.0) 
-            if iwrd[-1] == self.vocab.idx_unk: 
-                nunk += 1
-        ### <bos> and <eos> are never divergent
-        ref[0] = -1.0 ### mark non-divergent (is aligned to any word in the other side)
-        ref[-1] = -1.0
-        return iwrd, ref, nunk
 
-    def src2isrc_iref(self, src):
-        isrc = []
-        iref = []
+    def src2isrc_div(self, src, sign):
+        src = list(src)
+        src.insert(0,self.vocab.str_bos)
+        src.append(self.vocab.str_eos)
+        #src is    [ <bos>, src1, src2, ..., srcj, <eos>]
+        isrc = [] #[ <BOS>, SRC1, SRC2, ..., SRCj, <EOS>]
+        div = []  #[ sign,  sign, sign, ..., sign, sign]
         nunk = 0
         for s in src:
+            div.append(sign) # sign is -1.0 if not divergent +1.0 if divergent
             isrc.append(self.vocab.get(s))
             if isrc[-1] == self.vocab.idx_unk: 
                 nunk += 1
-#            print(s,isrc[-1])
-#        print("isrc:{}:".format(len(isrc)), isrc)
-        return isrc, iref, nunk
+        return isrc, div, nunk
 
-    def tgt2itgt_iref(self, tgt): 
-        itgt = []
-        iref = []
+    def tgt2itgt_div_iwrd_iref(self, tgt, sign, lid):
+        tgt = list(tgt)
+        tgt.insert(0,self.vocab.str_bos)
+        tgt.append(self.vocab.str_eos)
+        #tgt is    [ <bos>, tgt1, tgt2, ..., tgti, <eos>]
+        itgt = [] #[ <BOS>, TGT1, TGT2, ..., TGTi, <EOS>]
+        div =  [] #[ sign,  sign, sign, ..., sign, sign]
+        iwrd = [] #[ <LID>, TGT1, TGT2, ..., TGTi]  (removes last element <eos>, replaces <BOS> by <LID>)
+        iref = [] #[ TGT1,  TGT2, ..., TGTi, <EOS>] (removes first element <bos>)
         nunk = 0
-        if self.is_bitext:
-            for i,t in enumerate(tgt): 
-                idx_t = self.vocab.get(t)
-                if idx_t == self.vocab.idx_unk: 
-                    nunk += 1
-#                print(t,idx_t)
-                if self.is_inference: #all tokens are used <bos> my sentence <eos>
-                    itgt.append(idx_t)
-                else: 
-                    if i>0: iref.append(idx_t) ### do not include LID or <bos>
-                    if i<len(tgt)-1: itgt.append(idx_t) ### do not include <eos>
-#        print("itgt:{}:".format(len(itgt)), itgt)
-#        print("iref:{}:".format(len(iref)), iref)
-        return itgt, iref, nunk
+        for t in tgt:
+            div.append(sign) # sign is -1.0 if not divergent +1.0 if divergent
+            itgt.append(self.vocab.get(t))
+            if itgt[-1] == self.vocab.idx_unk: 
+                nunk += 1
+
+        iwrd = list(itgt)
+        del iwrd[-1] #deleted <eos>
+        iwrd[0] = self.vocab.get(lid) #<bos> => <lid>
+        iref = list(itgt)
+        del iref[0] #deleted <bos>
+        return itgt, div, iwrd, iref, nunk
+
+
 
     def __iter__(self):
         ### next are statistics of dataset
@@ -237,47 +212,48 @@ class Dataset():
 
 
     def minibatch(self, index):
-        SRC, TGT, REF_SRC, REF_TGT, RAW_SRC, RAW_TGT, NSRC_UNK, NTGT_UNK, LEN_SRC, LEN_TGT = [], [], [], [], [], [], [], [], [], []
-        max_src, max_tgt = 0, 0
-        for src, tgt, isrc, itgt, iref_src, iref_tgt, nsrc_unk, ntgt_unk in self.data_batch[index]:
-            self.nsrc_tok += max(0,len(src)-2)
-            self.ntgt_tok += max(0,len(tgt)-2)
+        SRC, TGT, ISRC, ITGT, IWRD, IREF, DIV_SRC, DIV_TGT, NUNK_SRC, NUNK_TGT, LEN_SRC, LEN_TGT, LEN_WRD = [], [], [], [], [], [], [], [], [], [], [], [], []
+        max_src, max_tgt, max_ref = 0, 0, 0
+        for src, tgt, isrc, itgt, iwrd, iref, div_src, div_tgt, nsrc_unk, ntgt_unk in self.data_batch[index]:
+            self.nsrc_tok += max(0,len(src))
+            self.ntgt_tok += max(0,len(tgt))
             self.nsrc_unk += nsrc_unk
             self.ntgt_unk += ntgt_unk
-            #### update max lenghts
-            if len(isrc) > max_src: max_src = len(isrc)
-            if len(itgt) > max_tgt: max_tgt = len(itgt)
-            RAW_SRC.append(src)
-            RAW_TGT.append(tgt)
-            SRC.append(isrc)
-            TGT.append(itgt)
-            REF_SRC.append(iref_src)
-            REF_TGT.append(iref_tgt)
-            LEN_SRC.append(len(isrc)) ### '<bos> my sentence <eos>'
-            LEN_TGT.append(len(itgt)) ### both iref and itgt have the same length
-        ### add padding 
+            SRC.append(src)
+            TGT.append(tgt)
+            ISRC.append(isrc)
+            ITGT.append(itgt)
+            IWRD.append(iwrd)
+            IREF.append(iref)
+            DIV_SRC.append(div_src)
+            DIV_TGT.append(div_tgt)
+            LEN_SRC.append(len(isrc)) ### len(isrc)
+            LEN_TGT.append(len(itgt)) ### len(itgt)
+            LEN_WRD.append(len(iref)) ### len(iwrd) and len(iref)
+            max_src =  max(max_src, LEN_SRC[-1])
+            max_ref =  max(max_ref, LEN_WRD[-1])
+            max_tgt =  max(max_tgt, LEN_TGT[-1])
+        #print("BATCH max_src={} max_tgt={} max_ref={}".format(max_src,max_tgt,max_ref))
         for i in range(len(SRC)):
-            while len(SRC[i]) < max_src: SRC[i].append(self.vocab.idx_pad) #<pad>
-            while len(TGT[i]) < max_tgt: TGT[i].append(self.vocab.idx_pad) #<pad>
-            if self.is_align:
-                while len(REF_SRC[i]) < max_src: REF_SRC[i].append(-1.0) #not divergent
-                while len(REF_TGT[i]) < max_tgt: REF_TGT[i].append(-1.0)
-            else:
-                while len(REF_SRC[i]) < max_src: REF_SRC[i].append(self.vocab.idx_pad)
-                while len(REF_TGT[i]) < max_tgt: REF_TGT[i].append(self.vocab.idx_pad)
-#            print("TGT",TGT[i])
-#            print("REF",REF[i])        
-        #print("BATCH max_src={} max_tgt={}".format(max_src,max_tgt))
-        #print("LEN_SRC: {}".format(LEN_SRC))
-        #print("LEN_TGT: {}".format(LEN_TGT))
-        #for i in range(len(SRC)):
-        #    print("EXAMPLE {}/{}".format(i,len(SRC)))
-        #    print("  RAW_SRC: {}".format(" ".join([e for e in RAW_SRC[i]])))
-        #    print("  RAW_TGT: {}".format(" ".join([e for e in RAW_TGT[i]])))
-        #    print("  SRC: {}".format(" ".join([str(e) for e in SRC[i]])))
-        #    print("  TGT: {}".format(" ".join([str(e) for e in TGT[i]])))
-        #    print("  REF: {}".format(" ".join([str(e) for e in REF[i]])))
-        return SRC, TGT, REF_SRC, REF_TGT, RAW_SRC, RAW_TGT, LEN_SRC, LEN_TGT
+            ### add padding 
+            while len(ISRC[i]) < max_src: ISRC[i].append(self.vocab.idx_pad) #<pad>
+            while len(ITGT[i]) < max_tgt: ITGT[i].append(self.vocab.idx_pad) #<pad>
+            while len(DIV_SRC[i]) < max_src: DIV_SRC[i].append(1.0)
+            while len(DIV_TGT[i]) < max_tgt: DIV_TGT[i].append(1.0)
+            while len(IWRD[i]) < max_ref: IWRD[i].append(self.vocab.idx_pad) #<pad>
+            while len(IREF[i]) < max_ref: IREF[i].append(self.vocab.idx_pad) #<pad>
+            #print(" SRC\t{}".format(" ".join(str(e) for e in SRC[i]))) 
+            #print(" ISRC\t{}".format(" ".join(str(e) for e in ISRC[i]))) 
+            #print(" LEN_SRC\t{}".format(LEN_SRC[i])) 
+            #print(" TGT\t{}".format(" ".join(str(e) for e in TGT[i]))) 
+            #print(" ITGT\t{}".format(" ".join(str(e) for e in ITGT[i]))) 
+            #print(" LEN_TGT\t{}".format(LEN_TGT[i]))
+            #print(" IWRD\t{}".format(" ".join(str(e) for e in IWRD[i]))) 
+            #print(" IREF\t{}".format(" ".join(str(e) for e in IREF[i]))) 
+            #print(" LEN_WRD\t{}".format(LEN_WRD[i]))
+            #print(" DIV_SRC\t{}".format(" ".join(str(e) for e in DIV_SRC[i]))) 
+            #print(" DIV_TGT\t{}".format(" ".join(str(e) for e in DIV_TGT[i]))) 
+        return ISRC, ITGT, IWRD, IREF, DIV_SRC, DIV_TGT, SRC, TGT, LEN_SRC, LEN_TGT, LEN_WRD
 
 
 

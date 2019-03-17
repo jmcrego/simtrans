@@ -69,7 +69,6 @@ class Model():
             self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.01, maxval=0.01), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
-#            embedded = tf.nn.l2_normalize(embedded,2) ### normalize along axis E
         return embedded
 
 
@@ -155,72 +154,61 @@ class Model():
 ###################
     
     def add_placeholders(self):
-        self.lr            = tf.placeholder(tf.float32, shape=[],        name="lr")
-        self.input_src     = tf.placeholder(tf.int32, shape=[None,None], name="input_src")  # Shape: batch_size x |Fj| (sequence length)
-        self.input_tgt     = tf.placeholder(tf.int32, shape=[None,None], name="input_tgt")  # Shape: batch_size x |Ei| (sequence length)
-        self.len_src       = tf.placeholder(tf.int32, shape=[None],      name="len_src")
-        self.len_tgt       = tf.placeholder(tf.int32, shape=[None],      name="len_tgt")
-        if self.config.network.type == 'align': ### ref contains diverenge/similarity scores (1.0 or -1.0)
-            self.ref_src       = tf.placeholder(tf.float32, shape=[None,None], name="ref_src")  # Shape: batch_size x |Ei| (sequence length)
-            self.ref_tgt       = tf.placeholder(tf.float32, shape=[None,None], name="ref_tgt")  # Shape: batch_size x |Ei| (sequence length)
-        else: ### translation
-            self.ref_src       = tf.placeholder(tf.int32, shape=[None,None], name="ref_src")  # Shape: batch_size x |Ei| (sequence length)
-            self.ref_tgt       = tf.placeholder(tf.int32, shape=[None,None], name="ref_tgt")  # Shape: batch_size x |Ei| (sequence length)
+        self.lr            = tf.placeholder(tf.float32, shape=[],          name="lr")
+        self.input_src     = tf.placeholder(tf.int32,   shape=[None,None], name="input_src")  # Shape: batch_size x |Fj| (sequence length)
+        self.input_tgt     = tf.placeholder(tf.int32,   shape=[None,None], name="input_tgt")  # Shape: batch_size x |Ei| (sequence length)
+        self.len_src       = tf.placeholder(tf.int32,   shape=[None],      name="len_src")
+        self.len_tgt       = tf.placeholder(tf.int32,   shape=[None],      name="len_tgt")
+        self.wrd_tgt       = tf.placeholder(tf.int32,   shape=[None,None], name="wrd_tgt")  # Shape: batch_size x |Ei| (sequence length)
+        self.ref_tgt       = tf.placeholder(tf.int32,   shape=[None,None], name="ref_tgt")  # Shape: batch_size x |Ei| (sequence length)
+        self.len_wrd       = tf.placeholder(tf.int32,   shape=[None],      name="len_wrd")
+        self.div_src       = tf.placeholder(tf.float32, shape=[None,None], name="div_src")  # Shape: batch_size x |Ei| (sequence length)
+        self.div_tgt       = tf.placeholder(tf.float32, shape=[None,None], name="div_tgt")  # Shape: batch_size x |Ei| (sequence length)
 
-    def add_encoder_src(self):
-        sys.stderr.write("encoder_src\n")
-        B = tf.shape(self.input_src)[0] #batch size
-        S = tf.shape(self.input_src)[1] #seq_length (including <pad> tokens)
+    def add_encoder(self, side):
+        sys.stderr.write("encoder_{}\n".format(side))
+        if side=='src':
+            B = tf.shape(self.input_src)[0] #batch size
+            S = tf.shape(self.input_src)[1] #seq_length (including <pad> tokens)
+            Output = self.input_src
+            Length = self.len_src
+        elif side=='tgt':
+            B = tf.shape(self.input_tgt)[0] #batch size
+            S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
+            Output = self.input_tgt
+            Length = self.len_tgt
+        else:
+            sys.stderr.write("error: bad encoder side={}\n".format(side))
+            sys.exit()
 
-        for l in range(len(self.config.network.enc_layers)):
-            t, f, s, d, n = self.config.network.layer('enc',l)
+        Last = []
+        Embed = []
+        for l in range(self.config.network.nlayers('enc')):
+            t, f, u, d, n = self.config.network.layer('enc',l) ### type, filters, units, dropout, name
             if t=='w':
-                self.embed_src = self.wembedding(self.input_src, self.config.vocab.length, s, d, n) #[B,S,E]
-                self.out_src = self.embed_src
-                self.last_src = []
+                Output = self.wembedding(Output, self.config.vocab.length, u, d, n) #[B,S,E]
             elif t=='b': 
-                self.out_src, self.last_src = self.blstm(self.out_src, s, d, self.len_src, n)
+                Output, Last = self.blstm(Output, u, d, Length, n)
             elif t=='c':
-                self.out_src = self.conv(self.out_src, f, s, d, n)
+                Output = self.conv(Output, f, u, d, n)
             elif t=='l':
-                self.out_src, self.last_src = self.lstm(self.out_src, s, d, self.len_src, n)
+                Output, Last = self.lstm(Output, u, d, Length, n)
             elif t=='s':
-                self.embed_snt_src = self.sembedding(self.out_src, self.last_src, n, self.len_src)
+                Embed = self.sembedding(Output, Last, n, Length)
             else:
-                sys.stderr.write("error: bad encoder {}-th layer type\n".format(l))
+                sys.stderr.write("error: bad encoder {}-th layer type={}\n".format(l,t))
                 sys.exit()
 
-    def add_encoder_tgt(self):
-        sys.stderr.write("encoder_tgt\n")
+        return Output, Last, Embed
+
+    def add_translate(self):
+        sys.stderr.write("translate\n")
         B = tf.shape(self.input_tgt)[0] #batch size
-        S = tf.shape(self.input_tgt)[1] #seq_length (including <pad> tokens)
+        S = tf.shape(self.wrd_tgt)[1] #seq_length
 
-        for l in range(len(self.config.network.enc_layers)):
-            t, f, s, d, n = self.config.network.layer('enc',l)
-            if t=='w':
-                self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, s, d, n) #[B,S,E]
-                self.out_tgt = self.embed_tgt
-                self.last_tgt = []
-            elif t=='b': 
-                self.out_tgt, self.last_tgt = self.blstm(self.out_tgt, s, d, self.len_tgt, n)
-            elif t=='c':
-                self.out_tgt = self.conv(self.out_tgt, f, s, d, n)
-            elif t=='l':
-                self.out_tgt, self.last_tgt = self.lstm(self.out_tgt, s, d, self.len_tgt, n)
-            elif t=='s':
-                self.embed_snt_tgt = self.sembedding(self.out_tgt, self.last_tgt, n, self.len_tgt)
-            else:
-                sys.stderr.write("error: bad encoder {}-th layer type\n".format(l))
-                sys.exit()
-
-    def add_decoder_tgt(self):
-        sys.stderr.write("decoder_tgt\n")
-        B = tf.shape(self.input_tgt)[0] #batch size
-        S = tf.shape(self.input_tgt)[1] #seq_length
-
-        t, f, s, d, n = self.config.network.layer('dec',0) 
+        t, f, u, d, n = self.config.network.layer('trn',0) 
         if t=='w':
-            self.embed_tgt = self.wembedding(self.input_tgt, self.config.vocab.length, s, d, n) #[B,S,E]
+            self.embed_tgt = self.wembedding(self.wrd_tgt, self.config.vocab.length, u, d, n) #[B,S,E]
         else:
             sys.stderr.write("error: first tgt layer must be of type w:wembedding instead of '{}'\n".format(t))
             sys.exit()
@@ -231,22 +219,23 @@ class Model():
         self.embed_snt_src_plus_tgt = tf.concat([self.embed_snt_src_extend, self.embed_tgt], 2) #[B,S,H+E] or [B,S,E+E]
         self.out_tgt = self.embed_snt_src_plus_tgt
 
-        t, f, s, d, n = self.config.network.layer('dec',1) 
+        t, f, u, d, n = self.config.network.layer('trn',1) 
         if t=='l':
-            self.out_tgt, _ = self.lstm(self.out_tgt, s, d, self.len_tgt, n, origin=self.embed_snt_src)
+            self.out_tgt, _ = self.lstm(self.out_tgt, u, d, self.len_wrd, n, origin=self.embed_snt_src)
+        elif t=='b':
+            self.out_tgt, _ = self.blstm(self.out_tgt, u, d, self.len_wrd, n, origin=self.embed_snt_src)
         else:
-            sys.stderr.write("error: second tgt layer must be of type l:lstm instead of '{}'\n".format(t))
+            sys.stderr.write("error: second tgt layer must be of type l:lstm or b:blstm instead of '{}'\n".format(t))
             sys.exit()
 
         with tf.variable_scope("logits",reuse=tf.AUTO_REUSE):
             self.out_logits = tf.layers.dense(self.out_tgt, self.config.vocab.length)
             self.out_pred = tf.argmax(self.out_logits, 2)
 
-    def add_loss_trans(self):
-        with tf.name_scope("loss_trans"):
+        with tf.name_scope("trans"):
             xentropy = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(self.ref_tgt, depth=self.config.vocab.length, dtype=tf.float32), logits=self.out_logits) #[B, S]
-            self.tmask = tf.sequence_mask(self.len_tgt, dtype=tf.float32) #[B, S]            
-            self.loss = tf.reduce_sum(xentropy*self.tmask) / tf.to_float(tf.reduce_sum(self.len_tgt))
+            self.tmask = tf.sequence_mask(self.len_wrd, dtype=tf.float32) #[B, S]            
+            self.tloss = tf.reduce_sum(xentropy*self.tmask) / tf.to_float(tf.reduce_sum(self.len_wrd))
 
 
     def add_align(self):
@@ -256,9 +245,10 @@ class Model():
         St = tf.shape(self.input_tgt)[1] #seq_length
         R = 1.0
 
+        self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
+
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
-#            self.align = tf.div(self.align, 2.0) ### values in matrix must are limited to 10.0 to avoid 'nan' when exp(s)
             self.align_t = tf.transpose(self.align, [0, 2, 1]) #[B,St,Ss]
 
             #equation (2) [aggregation of each src word]
@@ -267,8 +257,8 @@ class Model():
             self.log_sum_exp_rs_src = tf.log(self.sum_exp_rs_src) #[B,Ss]
             self.aggr_src = tf.divide(self.log_sum_exp_rs_src, R, name="aggregation_src") #[B,Ss]
             ### equation (3) [error of each src word]
-            self.aggr_times_ref_src = self.aggr_src * self.ref_src
-            self.error_src = tf.log(1 + tf.exp(self.aggr_times_ref_src)) ### low error if aggregation_src * ref_src is negative (different sign)
+            self.aggr_times_div_src = self.aggr_src * self.div_src
+            self.error_src = tf.log(1 + tf.exp(self.aggr_times_div_src)) ### low error if aggregation_src * div_src is negative (different sign)
 
             #equation (2) [aggregation of each tgt word]
             self.exp_rs_tgt = tf.exp(R * self.align) #[B,Ss,St]
@@ -276,21 +266,16 @@ class Model():
             self.log_sum_exp_rs_tgt = tf.log(self.sum_exp_rs_tgt) #[B,St]
             self.aggr_tgt = tf.divide(self.log_sum_exp_rs_tgt, R, name="aggregation_tgt") #[B,St]
             ### equation (3) [error of each tgt word]
-            self.aggr_times_ref_tgt = self.aggr_tgt * self.ref_tgt
-            self.error_tgt = tf.log(1 + tf.exp(self.aggr_times_ref_tgt))
+            self.aggr_times_div_tgt = self.aggr_tgt * self.div_tgt
+            self.error_tgt = tf.log(1 + tf.exp(self.aggr_times_div_tgt))
 
-
-    def add_loss_align(self):
-
-        with tf.name_scope("loss_align"):
             self.sum_error_src = tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1]), (self.error_src, self.len_src), dtype=tf.float32)
             self.loss_src = tf.reduce_mean(self.sum_error_src)
 
             self.sum_error_tgt = tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1]), (self.error_tgt, self.len_tgt), dtype=tf.float32)
             self.loss_tgt = tf.reduce_mean(self.sum_error_tgt)
 
-            self.loss = self.loss_tgt + self.loss_src
-
+            self.aloss = self.loss_tgt + self.loss_src
 
     def add_train(self):
         if   self.config.network.opt == 'adam':     self.optimizer = tf.train.AdamOptimizer(self.lr)
@@ -313,39 +298,20 @@ class Model():
     def build_graph(self):
         self.add_placeholders()
 
+        self.out_src, self.last_src, self.embed_snt_src = self.add_encoder('src')
 
-        if self.config.network.type == 'align':
-            self.add_encoder_src() 
-            self.add_encoder_tgt()  
-            if not self.config.is_inference: # training
+        if self.config.is_inference and self.cofig.src_tst is not None:
+            self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
+
+        else: ### training
+            self.loss = 0
+            if self.config.network.trn is not None:
+                self.add_translate()  
+                self.loss += self.tloss
+            if self.config.network.ali is not None:
                 self.add_align()
-                self.add_loss_align()
-                self.add_train()
-
-        elif self.config.network.type == 'translate':
-            if self.config.is_inference:
-                self.add_encoder_src() 
-                self.add_encoder_tgt()  
-            else: # training
-                self.add_encoder_src() 
-                self.add_decoder_tgt()
-                self.add_loss_trans()
-                self.add_train()
-
-#        if self.config.is_inference:
-#            self.add_encoder_src() 
-#            self.add_encoder_tgt()  
-#        else: ### training
-#            if self.config.network.type == 'align':
-#                self.add_encoder_src() 
-#                self.add_encoder_tgt()  
-#                self.add_align()
-#                self.add_loss_align()
-#            elif self.config.network.type == 'translate':
-#                self.add_encoder_src() 
-#                self.add_decoder_tgt()
-#                self.add_loss_trans()
-#            self.add_train()
+                self.loss += self.aloss
+            self.add_train()
 
         pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
         sys.stderr.write("Total Enc/Dec parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
@@ -357,14 +323,17 @@ class Model():
 ### feed_dict #####
 ###################
 
-    def get_feed_dict(self, src, len_src, tgt=[[]], len_tgt=[], ref_src=[[]], ref_tgt=[[]], lr=0.0):
+    def get_feed_dict(self, src, len_src, tgt=[[]], len_tgt=[], wrd_tgt=[[]], ref_tgt=[[]], len_wrd=[[]], div_src=[[]], div_tgt=[[]], lr=0.0):
         feed = { 
             self.input_src: src,
             self.input_tgt: tgt,
-            self.ref_src: ref_src,
-            self.ref_tgt: ref_tgt,
             self.len_src: len_src,
             self.len_tgt: len_tgt,
+            self.wrd_tgt: wrd_tgt,
+            self.ref_tgt: ref_tgt,
+            self.len_wrd: len_wrd,
+            self.div_src: div_src,
+            self.div_tgt: div_tgt,
             self.lr: lr
         }
         return feed
@@ -385,9 +354,9 @@ class Model():
         pscore = Score() ### partial score
         ini_time = time.time()
         tpre = time.time()
-        for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(train):
-            fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch, lr)
-            if iter%10000==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
+        for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(train):
+            fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
+#            if iter%1000==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch,, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
@@ -415,8 +384,8 @@ class Model():
         if dev is not None:
             nbatches = (dev.len + self.config.batch_size - 1) // self.config.batch_size
             ini_time = time.time()
-            for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(dev):
-                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch)
+            for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(dev):
+                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch, div_src_batch, div_tgt_batch)
                 loss = self.sess.run(self.loss, feed_dict=fd)
                 score.add(loss,[],[],[])
 #                loss, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
@@ -457,7 +426,7 @@ class Model():
         nbatches = (tst.len + self.config.batch_size - 1) // self.config.batch_size
 
         ini_time = time.time()
-        for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
+        for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
 
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch)
 #            self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch)
