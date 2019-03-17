@@ -125,6 +125,7 @@ class Dataset():
             sign = -1.0 ### not divergent
             if not self.is_inference and config.network.ali is not None and len(prev_tgt)>0 and np.random.random_sample()>=0.5: #### divergent example
                 tgt = prev_tgt ### delete <bos> and <eos> added previously
+                n_divergent += 1
                 sign = 1.0
 
             isrc, div_src, nunk_src = self.src2isrc_div(src,sign)
