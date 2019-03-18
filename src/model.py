@@ -199,7 +199,8 @@ class Model():
                 sys.stderr.write("error: bad encoder {}-th layer type={}\n".format(l,t))
                 sys.exit()
 
-        return Output, Last, Embed
+        return Output, Embed
+#        return Output, Last, Embed
 
     def add_translate(self):
         sys.stderr.write("translate\n")
@@ -245,7 +246,8 @@ class Model():
         St = tf.shape(self.input_tgt)[1] #seq_length
         R = 1.0
 
-        self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
+        self.out_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
+#        self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
@@ -298,10 +300,12 @@ class Model():
     def build_graph(self):
         self.add_placeholders()
 
-        self.out_src, self.last_src, self.embed_snt_src = self.add_encoder('src')
+#        self.out_src, self.last_src, self.embed_snt_src = self.add_encoder('src')
+        self.out_src, self.embed_snt_src = self.add_encoder('src')
 
         if self.config.is_inference and self.cofig.src_tst is not None:
-            self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
+#            self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
+            self.out_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
 
         else: ### training
             self.loss = 0
@@ -356,7 +360,8 @@ class Model():
         tpre = time.time()
         for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(train):
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
-#            if iter%1000==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch,, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
+            if iter%1000==0: 
+                self.debug(fd, src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch)
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
@@ -515,42 +520,40 @@ class Model():
 ### other #######
 #################
 
-    def debug(self, fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch):
+    def debug(self, fd, src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch):
         sys.stderr.write("B={}\n".format(len(src_batch)))
         sys.stderr.write("Ss={}\n".format(len(src_batch[0])))
         sys.stderr.write("St={}\n".format(len(tgt_batch[0])))
         sys.stderr.write("V={}\n".format(self.config.vocab.length))
-        if self.config.network.type == 'align':
-            embed_src, out_src, last_src, embed_snt_src, \
-            embed_tgt, out_tgt, last_tgt, embed_snt_tgt, \
+        if self.config.network.ali is not None:
+            out_src, embed_snt_src, \
+            out_tgt, embed_snt_tgt, \
             align_t, exp_rs_src, sum_exp_rs_src, log_sum_exp_rs_src, aggr_src, aggr_times_ref_src, error_src, sum_error_src, loss_src, \
             align,   exp_rs_tgt, sum_exp_rs_tgt, log_sum_exp_rs_tgt, aggr_tgt, aggr_times_ref_tgt, error_tgt, sum_error_tgt, loss_tgt, \
             loss = self.sess.run([\
-                self.embed_src, self.out_src, self.last_src, self.embed_snt_src, \
-                self.embed_tgt, self.out_tgt, self.last_tgt, self.embed_snt_tgt, \
+                self.out_src, self.embed_snt_src, \
+                self.out_tgt, self.embed_snt_tgt, \
                 self.align_t, self.exp_rs_src, self.sum_exp_rs_src, self.log_sum_exp_rs_src, self.aggr_src, self.aggr_times_ref_src, self.error_src, self.sum_error_src, self.loss_src, \
                 self.align,   self.exp_rs_tgt, self.sum_exp_rs_tgt, self.log_sum_exp_rs_tgt, self.aggr_tgt, self.aggr_times_ref_tgt, self.error_tgt, self.sum_error_tgt, self.loss_tgt, \
                 self.loss], feed_dict=fd)
 
             sys.stderr.write("Encoder src\n")
-            sys.stderr.write("shape of embed_src = {} [B,Ss,Es]\n".format(np.array(embed_src).shape))
             sys.stderr.write("shape of out_src = {} [B,Ss,Hs] or [B,Ss,Es]\n".format(np.array(out_src).shape))
-            sys.stderr.write("shape of last_src = {} [B,Hs[-1]]\n".format(np.array(last_src).shape))
             sys.stderr.write("shape of embed_snt_src = {}\n".format(np.array(embed_snt_src).shape))
             sys.stderr.write("Encoder tgt\n")
             sys.stderr.write("shape of embed_tgt = {} [B,St,Et]\n".format(np.array(embed_tgt).shape))
             sys.stderr.write("shape of out_tgt = {} [B,St,Ht] or [B,St,Et]\n".format(np.array(out_tgt).shape))
-            sys.stderr.write("shape of last_tgt = {} [B,Ht[-1]]\n".format(np.array(last_tgt).shape))
             sys.stderr.write("shape of embed_snt_tgt = {}\n".format(np.array(embed_snt_tgt).shape))
 
             for b in range(len(align)):
                 sys.stderr.write("### {} #######################\n".format(b))
                 sys.stderr.write("src\t{}\n".format(" ".join(str(e) for e in raw_src_batch[b])))
                 sys.stderr.write("isrc\t{}\n".format(" ".join([str(e) for e in src_batch[b]])))
-                sys.stderr.write("iref_src\t{}\n".format(" ".join([str(e) for e in ref_src_batch[b]])))
                 sys.stderr.write("tgt\t{}\n".format(" ".join(str(e) for e in raw_tgt_batch[b])))
                 sys.stderr.write("itgt\t{}\n".format(" ".join([str(e) for e in tgt_batch[b]])))
-                sys.stderr.write("iref_tgt\t{}\n".format(" ".join([str(e) for e in ref_tgt_batch[b]])))
+                sys.stderr.write("iwrd\t{}\n".format(" ".join([str(e) for e in wrd_batch[b]])))
+                sys.stderr.write("iref\t{}\n".format(" ".join([str(e) for e in ref_batch[b]])))
+                sys.stderr.write("lens[src={}, tgt={}, wrd={}]".format(len_src_batch[b], len_tgt_batch[b], len_wrd_batch[b]))
 
                 #print2D("src out[{}]".format(b), out_src[b])
                 print1D("src out[{}][1]".format(b), out_src[b][1])
