@@ -357,7 +357,7 @@ class Model():
         for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(train):
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
 #            if iter%1000==0: self.debug(fd, src_batch, tgt_batch, ref_src_batch, ref_tgt_batch,, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch)
-            _, loss, aggr_times_div_src, aggr_times_div_tgt = self.sess.run([self.train_op, self.loss, self.aggr_times_div_src, self.aggr_times_div_tgt], feed_dict=fd)
+            _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
             score.add(loss,[],[],[])
             pscore.add(loss,[],[],[])
             if (iter+1)%self.config.reports == 0:
