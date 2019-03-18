@@ -16,6 +16,9 @@ class network():
             sys.stderr.write('error: missing network file={}\n'.format(file))
             sys.exit()
 
+        self.enc = None
+        self.ali = None
+        self.trn = None
         with open(file, 'r') as f:
             for line in f:
                 opt, val = line.strip('\n').split()
@@ -27,6 +30,7 @@ class network():
                 else:
                     sys.stderr.write('error: bad network option={}\n'.format(opt))
                     sys.exit()
+
         self.enc_layers = []
         self.ali_layers = []
         self.trn_layers = []
