@@ -410,7 +410,7 @@ class Model():
         # evaluate over devset ###
         ##########################
         score = Score()
-        if dev is not None and false:
+        if dev is not None and False:
             nbatches = (dev.len + self.config.batch_size - 1) // self.config.batch_size
             ini_time = time.time()
             for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(dev):
