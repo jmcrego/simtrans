@@ -552,13 +552,13 @@ class Model():
         if self.config.network.ali is not None:
             out_src, embed_snt_src, \
             out_tgt, embed_snt_tgt, \
-            align_t, exp_rs_src, sum_exp_rs_src, log_sum_exp_rs_src, aggr_src, aggr_times_ref_src, error_src, sum_error_src, loss_src, \
-            align,   exp_rs_tgt, sum_exp_rs_tgt, log_sum_exp_rs_tgt, aggr_tgt, aggr_times_ref_tgt, error_tgt, sum_error_tgt, loss_tgt, \
+            align_t, exp_rs_src, sum_exp_rs_src, log_sum_exp_rs_src, aggr_src, aggr_times_div_src, error_src, sum_error_src, loss_src, \
+            align,   exp_rs_tgt, sum_exp_rs_tgt, log_sum_exp_rs_tgt, aggr_tgt, aggr_times_div_tgt, error_tgt, sum_error_tgt, loss_tgt, \
             loss = self.sess.run([\
                 self.out_src, self.embed_snt_src, \
                 self.out_tgt, self.embed_snt_tgt, \
-                self.align_t, self.exp_rs_src, self.sum_exp_rs_src, self.log_sum_exp_rs_src, self.aggr_src, self.aggr_times_ref_src, self.error_src, self.sum_error_src, self.loss_src, \
-                self.align,   self.exp_rs_tgt, self.sum_exp_rs_tgt, self.log_sum_exp_rs_tgt, self.aggr_tgt, self.aggr_times_ref_tgt, self.error_tgt, self.sum_error_tgt, self.loss_tgt, \
+                self.align_t, self.exp_rs_src, self.sum_exp_rs_src, self.log_sum_exp_rs_src, self.aggr_src, self.aggr_times_div_src, self.error_src, self.sum_error_src, self.loss_src, \
+                self.align,   self.exp_rs_tgt, self.sum_exp_rs_tgt, self.log_sum_exp_rs_tgt, self.aggr_tgt, self.aggr_times_div_tgt, self.error_tgt, self.sum_error_tgt, self.loss_tgt, \
                 self.loss], feed_dict=fd)
 
             sys.stderr.write("Encoder src\n")
@@ -586,7 +586,7 @@ class Model():
                 print1D("sum_exp(A)[{}]".format(b), sum_exp_rs_src[b])
                 print1D("log_sum_exp(A)[{}]".format(b), log_sum_exp_rs_src[b])
                 print1D("aggr[{}]".format(b), aggr_src[b])
-                print1D("aggr_times_ref[{}]".format(b), aggr_times_ref_src[b])
+                print1D("aggr_times_div[{}]".format(b), aggr_times_div_src[b])
                 print1D("error[{}]".format(b), error_src[b])
                 print0D("sum_error[{}]".format(b),sum_error_src[b])
     
@@ -597,7 +597,7 @@ class Model():
                 print1D("sum_exp(A)[{}]".format(b), sum_exp_rs_tgt[b])
                 print1D("log_sum_exp(A)[{}]".format(b), log_sum_exp_rs_tgt[b])
                 print1D("aggr[{}]".format(b), aggr_tgt[b])
-                print1D("aggr_times_ref[{}]".format(b), aggr_times_ref_tgt[b])
+                print1D("aggr_times_div[{}]".format(b), aggr_times_div_tgt[b])
                 print1D("error_tgt[{}]".format(b), error_tgt[b])
                 print0D("sum_error_tgt[{}]".format(b),sum_error_tgt[b])
     
