@@ -565,7 +565,6 @@ class Model():
             sys.stderr.write("shape of out_src = {} [B,Ss,Hs] or [B,Ss,Es]\n".format(np.array(out_src).shape))
             sys.stderr.write("shape of embed_snt_src = {}\n".format(np.array(embed_snt_src).shape))
             sys.stderr.write("Encoder tgt\n")
-            sys.stderr.write("shape of embed_tgt = {} [B,St,Et]\n".format(np.array(embed_tgt).shape))
             sys.stderr.write("shape of out_tgt = {} [B,St,Ht] or [B,St,Et]\n".format(np.array(out_tgt).shape))
             sys.stderr.write("shape of embed_snt_tgt = {}\n".format(np.array(embed_snt_tgt).shape))
 
