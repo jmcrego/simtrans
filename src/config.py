@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import tensorflow as tf
 import numpy as np
 import io
@@ -19,12 +18,14 @@ class network():
         self.enc = None
         self.ali = None
         self.trn = None
+        self.dir = None
         with open(file, 'r') as f:
             for line in f:
                 opt, val = line.strip('\n').split()
                 if opt == 'enc': self.enc = val
                 elif opt == 'ali': self.ali = val
                 elif opt == 'trn': self.trn = val
+                elif opt == 'dir': self.dir = val
                 elif opt == 'opt': self.opt = val
                 elif opt == 'lid': self.lid = val
                 else:
@@ -34,18 +35,22 @@ class network():
         self.enc_layers = []
         self.ali_layers = []
         self.trn_layers = []
+        self.dir_layers = []
         if self.enc is not None:
             self.enc_layers = self.enc.split(',')
         if self.ali is not None:
             self.ali_layers = self.ali.split(',')
         if self.trn is not None:
             self.trn_layers = self.trn.split(',')
+        if self.dir is not None:
+            self.dir_layers = self.dir.split(',')
         sys.stderr.write('Read Network {}\n'.format(file))
 
     def nlayers(self, which):
         if which=='enc': return len(self.enc_layers)
         elif which=='ali': return len(self.ali_layers)
         elif which=='trn': return len(self.trn_layers)
+        elif which=='dir': return len(self.dir_layers)
         else:
             sys.stderr.write('error: unknown layer={}\n'.format(which))
             sys.exit()
@@ -66,6 +71,11 @@ class network():
                 sys.stderr.write('error: bad trn layer index={}\n'.format(l))
                 sys.exit()
             fields = self.trn_layers[l].split('-')
+        elif which=='dir':
+            if l>=len(self.dir_layers):
+                sys.stderr.write('error: bad dir layer index={}\n'.format(l))
+                sys.exit()
+            return int(self.dir_layers[l])
         else:
             sys.stderr.write('error: unknown layer={}\n'.format(which))
             sys.exit()
@@ -87,6 +97,8 @@ class network():
                 f.write("ali {}\n".format(self.ali))
             if self.trn:
                 f.write("trn {}\n".format(self.trn))
+            if self.dir:
+                f.write("dir {}\n".format(self.dir))
             f.write("opt {}\n".format(self.opt))
             f.write("lid {}\n".format(self.lid))
 
@@ -151,6 +163,7 @@ bpe_model_path: file
 enc w-256-0.3-both,c-3-512-0.3-src,b-512-0.3-src,b-512-0.3-src,s-last
 ali w-256-0.3-both,c-3-512-0.3-tgt,b-512-0.3-tgt,b-512-0.3-tgt,s-last
 trn w-256-0.3-both,l-1024-0.3-tgt
+dir 1024
 opt adam
 lid English,French,German
 
@@ -169,6 +182,9 @@ enc/ali layers (comma-separated list):
 
 trn layers (comma-separated list):
     use WEmbedding and Lstm/Bi-lstm layers  (Ex: w-256-0.3-name,l-2048-0.2-name)
+
+dir layers (comma-separated list):
+    use 0 for not using a dense layer
 
 Network optimization:
     + adam

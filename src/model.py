@@ -124,7 +124,7 @@ class Model():
 
         if layer == 'last':
             if tf.size(last) == 0: 
-                sys.stderr.write("error: -net_snt 'last' cannot be used with the last -net_enc layer\n")
+                sys.stderr.write("error: -net_snt 'last' cannot be used with the last enc layer\n")
                 sys.exit()
             return last #[B,Hs[-1]*2]
 
@@ -200,7 +200,6 @@ class Model():
                 sys.exit()
 
         return Output, Embed
-#        return Output, Last, Embed
 
     def add_translate(self):
         sys.stderr.write("translate\n")
@@ -239,15 +238,33 @@ class Model():
             self.tloss = tf.reduce_sum(xentropy*self.tmask) / tf.to_float(tf.reduce_sum(self.len_wrd))
 
 
+    def add_direct(self):
+        sys.stderr.write("direct\n")
+        B = tf.shape(self.input_tgt)[0] #batch size
+        Ss = tf.shape(self.input_src)[1] #seq_length
+        St = tf.shape(self.input_tgt)[1] #seq_length
+
+        with tf.name_scope("direct"):
+            self.embed_snt_prod = tf.abs(tf.multiply(self.embed_snt_src, self.embed_snt_tgt)) # eq 4
+            self.embed_snt_diff = tf.subtract(self.embed_snt_src, self.embed_snt_tgt) # eq 5
+            self.hi = tf.concat([self.embed_snt_diff, self.embed_snt_prod], 2)
+
+            for l in range(self.config.network.nlayers('dir')):
+                if self.config.network.layer('dir',l)>0:
+                    self.hi = tf.layers.dense(self.hi, self.config.network.layer('dir',l), activation=tf.tanh)
+
+            self.snt_ref = tf.reduce_mean(-1.0*self.div_src,1) #-1.0:divergent or 1.0:same 
+            self.p = tf.layers.dense(self.hi, 1, activation=tf.sigmoid)
+            self.snt_ref = tf.max(tf.reduce_mean(-1.0 * self.div_src,1), 0.0) #1.0 or 0.0 (same or divergent)
+            self.dloss = tf.reduce_sum(self.snt_ref*log(self.p) + (1-self.snt_ref)*log(1-self.p))
+
+
     def add_align(self):
         sys.stderr.write("align\n")
         B = tf.shape(self.input_tgt)[0] #batch size
         Ss = tf.shape(self.input_src)[1] #seq_length
         St = tf.shape(self.input_tgt)[1] #seq_length
         R = 1.0
-
-        self.out_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
-#        self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
 
         with tf.name_scope("align"):
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
@@ -300,21 +317,28 @@ class Model():
     def build_graph(self):
         self.add_placeholders()
 
-#        self.out_src, self.last_src, self.embed_snt_src = self.add_encoder('src')
         self.out_src, self.embed_snt_src = self.add_encoder('src')
 
         if self.config.is_inference and self.cofig.src_tst is not None:
-#            self.out_tgt, self.last_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
             self.out_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
 
         else: ### training
+            if self.config.network.dir is not None or self.config.network.ali is not None:
+                self.out_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
+
             self.loss = 0
+            if self.config.network.dir is not None:
+                self.add_direct()  
+                self.loss += self.dloss
+
             if self.config.network.trn is not None:
                 self.add_translate()  
                 self.loss += self.tloss
+
             if self.config.network.ali is not None:
                 self.add_align()
                 self.loss += self.aloss
+
             self.add_train()
 
         pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())

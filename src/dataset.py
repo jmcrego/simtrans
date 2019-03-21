@@ -78,7 +78,7 @@ class Dataset():
                     src = sline.split(' ')
 
                 ### truncate if too long even for inference
-                if len(src)>self.maxtoksperline: 
+                if len(src)>self.maxtoksperline and self.is_inference: 
                     sys.stderr.write('warning: src sentence sized of {} tokens truncated to {}\n'.format(len(src),self.maxtoksperline))
                     src = src[0:self.maxtoksperline]
 
@@ -91,7 +91,7 @@ class Dataset():
                         tgt = tline.split(' ')
 
                     ### truncate if too long even for inference
-                    if len(tgt)>self.maxtoksperline: 
+                    if len(tgt)>self.maxtoksperline and self.is_inference: 
                         sys.stderr.write('warning: tgt sentence sized of {} tokens truncated to {}\n'.format(len(tgt),self.maxtoksperline))
                         tgt = tgt[0:self.maxtoksperline]
 
