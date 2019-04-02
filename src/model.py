@@ -436,18 +436,18 @@ class Model():
         # evaluate over devset ###
         ##########################
         score = Score()
-        if dev is not None and False:
+        if dev is not None:
             nbatches = (dev.len + self.config.batch_size - 1) // self.config.batch_size
             ini_time = time.time()
-            for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(dev):
-                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch, div_src_batch, div_tgt_batch)
+            for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(dev):
+                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
                 loss = self.sess.run(self.loss, feed_dict=fd)
                 score.add(loss,[],[],[])
 #                loss, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
 #                score.add(loss,out_pred,ref_tgt_batch,tmask)
             curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
             end_time = time.time()
-            sys.stderr.write('{} Epoch {} VALID (loss={:.4f} Acc={:.2f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,score.Acc,end_time-ini_time))
+            sys.stderr.write('{} Epoch {} VALID (loss={:.6f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,end_time-ini_time))
             sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc_tok, dev.ntgt_tok, 100.0*dev.nsrc_unk/dev.nsrc_tok, 100.0*dev.ntgt_unk/dev.ntgt_tok))
             #keep records
             self.config.vloss = score.Loss
