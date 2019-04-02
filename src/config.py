@@ -122,8 +122,10 @@ class Config():
 *  -tgt_val          FILE : tgt validation files (comma-separated)
 *  -tgt_val_lid      FILE : lid of tgt validation files (comma-separated)
 
-   -voc              FILE : src/tgt vocab file (needed to initialize learning)
-   -tok              FILE : src/tgt onmt tok options yaml file (needed to initialize learning)
+   -src_voc          FILE : src vocab file (needed to initialize learning)
+   -tgt_voc          FILE : tgt vocab file (needed to initialize learning)
+   -src_tok          FILE : src onmt tok options yaml file (needed to initialize learning)
+   -tgt_tok          FILE : tgt onmt tok options yaml file (needed to initialize learning)
    -net              FILE : network topology file (needed to initialize learning)
 
    -opt_lr          FLOAT : initial learning rate [0.0001]
@@ -209,12 +211,16 @@ Network LIDs (comma-separated list)
         self.tgt_val_lid = []
         self.src_tst = None
         self.tgt_tst = None
-        self.voc = None
-        self.tok = None
+        self.src_voc = None
+        self.tgt_voc = None
+        self.src_tok = None
+        self.tgt_tok = None
         self.net = None
         #will be created
-        self.vocab = None #vocabulary
-        self.token = None #onmt tokenizer
+        self.vocab_src = None #vocabulary
+        self.vocab_tgt = None #vocabulary
+        self.token_src = None #onmt tokenizer
+        self.token_tgt = None #onmt tokenizer
         self.network = None #network topology
         #optimization
         self.opt_lr = 0.0001
@@ -249,12 +255,17 @@ Network LIDs (comma-separated list)
         ### read network
         self.network = network(self.net)
         ### read vocabulary
-        self.vocab = Vocab(self.voc, self.network.lid)
+        self.vocab_src = Vocab(self.src_voc, self.network.lid)
+        self.vocab_tgt = Vocab(self.tgt_voc, self.network.lid)
         ### read tokenizer
-        if os.path.exists(self.tok): 
-            with open(self.tok) as yamlfile: 
+        if os.path.exists(self.src_tok): 
+            with open(self.src_tok) as yamlfile: 
                 tok_opt = yaml.load(yamlfile)
-                self.token = build_tokenizer(tok_opt)
+                self.token_src = build_tokenizer(tok_opt)
+        if os.path.exists(self.tgt_tok): 
+            with open(self.tgt_tok) as yamlfile: 
+                tok_opt = yaml.load(yamlfile)
+                self.token_tgt = build_tokenizer(tok_opt)
 
         #################
         ### inference ###
@@ -273,7 +284,7 @@ Network LIDs (comma-separated list)
         ################
         ### learning ###
         ################
-        if not len(self.src_trn) or len(self.src_trn)!=len(self.tgt_trn) or len(self.src_trn)!=len(self.tgt_trn_lid):
+        if   not len(self.src_trn) or len(self.src_trn)!=len(self.tgt_trn) or len(self.src_trn)!=len(self.tgt_trn_lid):
             sys.stderr.write('error: bad training files\n{}'.format(self.usage))
             sys.exit()
 
@@ -295,9 +306,9 @@ Network LIDs (comma-separated list)
 
     def create_dir_copy_files(self):
 
-        if os.path.exists(self.mdir + '/checkpoint') and (self.voc is not None or self.tok is not None or self.net is not None): 
-            sys.stderr.write('error: replacing voc/tok/net while exists previous {}/checkpoint\n'.format(self.mdir))
-            sys.exit()
+        if os.path.exists(self.mdir + '/checkpoint') and (self.src_voc is not None or self.tgt_voc is not None or self.src_tok is not None or self.tgt_tok is not None or self.net is not None): 
+            sys.stderr.write('warning: replacing voc/tok/net while exists previous {}/checkpoint\n'.format(self.mdir))
+#            sys.exit()
 
         if not os.path.exists(self.mdir):
             os.makedirs(self.mdir)
@@ -306,35 +317,59 @@ Network LIDs (comma-separated list)
             sys.stderr.write('reusing mdir={}\n'.format(self.mdir))
 
 
-        if self.voc is not None:
-            copyfile(self.voc, self.mdir + "/vocab")
-            sys.stderr.write('copied voc file={}\n'.format(self.voc))
+        if self.src_voc is not None:
+            copyfile(self.src_voc, self.mdir + "/vocab_src")
+            sys.stderr.write('copied src_voc file={}\n'.format(self.src_voc))
+
+        if self.tgt_voc is not None:
+            copyfile(self.tgt_voc, self.mdir + "/vocab_tgt")
+            sys.stderr.write('copied tgt_voc file={}\n'.format(self.tgt_voc))
     
         if self.net is not None:
             copyfile(self.net, self.mdir + "/network")
             sys.stderr.write('copied net file={}\n'.format(self.net))
 
-        if self.tok is not None: 
-            with open(self.tok) as f: 
+        if self.src_tok is not None: 
+            with open(self.src_tok) as f: 
                 tok_opt = yaml.load(f)
                 ### replaces/creates vocab option in token
-                tok_opt["vocabulary"] = self.mdir + '/vocab'
+                tok_opt["vocabulary"] = self.mdir + '/vocab_src'
                 ### if exists bpe_model_path option, copy model to mdir and replaces bpe_model_path in token
                 if 'bpe_model_path' in tok_opt:
-                    copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe")
-                    sys.stderr.write('copied bpe file={}\n'.format(tok_opt['bpe_model_path']))
-                    tok_opt['bpe_model_path'] = self.mdir + '/bpe'
+                    copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe_src")
+                    sys.stderr.write('copied src_bpe file={}\n'.format(tok_opt['bpe_model_path']))
+                    tok_opt['bpe_model_path'] = self.mdir + '/bpe_src'
                 ### dump token to mdir
-                with open(self.mdir + '/token', 'w') as outfile: 
+                with open(self.mdir + '/token_src', 'w') as outfile: 
                     yaml.dump(tok_opt, outfile, default_flow_style=True)      
-                sys.stderr.write('copied tok file={}\n'.format(self.tok))
+                sys.stderr.write('copied src_tok file={}\n'.format(self.src_tok))
 
-        self.voc = self.mdir + "/vocab"
+        if self.tgt_tok is not None: 
+            with open(self.tgt_tok) as f: 
+                tok_opt = yaml.load(f)
+                ### replaces/creates vocab option in token
+                tok_opt["vocabulary"] = self.mdir + '/vocab_tgt'
+                ### if exists bpe_model_path option, copy model to mdir and replaces bpe_model_path in token
+                if 'bpe_model_path' in tok_opt:
+                    copyfile(tok_opt['bpe_model_path'], self.mdir + "/bpe_tgt")
+                    sys.stderr.write('copied tgt_bpe file={}\n'.format(tok_opt['bpe_model_path']))
+                    tok_opt['bpe_model_path'] = self.mdir + '/bpe_tgt'
+                ### dump token to mdir
+                with open(self.mdir + '/token_tgt', 'w') as outfile: 
+                    yaml.dump(tok_opt, outfile, default_flow_style=True)      
+                sys.stderr.write('copied tgt_tok file={}\n'.format(self.tgt_tok))
+
+        self.src_voc = self.mdir + "/vocab_src"
+        self.tgt_voc = self.mdir + "/vocab_tgt"
+        self.src_tok = self.mdir + "/token_src"
+        self.tgt_tok = self.mdir + "/token_tgt"
         self.net = self.mdir + "/network"
-        self.tok = self.mdir + "/token"
 
-        if not os.path.exists(self.voc): 
-            sys.stderr.write('error: cannot find vocabulary file\n{}'.format(self.usage))
+        if not os.path.exists(self.src_voc): 
+            sys.stderr.write('error: cannot find src vocabulary file\n{}'.format(self.usage))
+            sys.exit()
+        if not os.path.exists(self.tgt_voc): 
+            sys.stderr.write('error: cannot find tgt vocabulary file\n{}'.format(self.usage))
             sys.exit()
         if not os.path.exists(self.net): 
             sys.stderr.write('error: cannot find network file\n{}'.format(self.usage))
@@ -355,8 +390,10 @@ Network LIDs (comma-separated list)
             elif (tok=="-src_val" and len(argv)):        self.src_val = argv.pop(0).split(',')
             elif (tok=="-tgt_val" and len(argv)):        self.tgt_val = argv.pop(0).split(',')
             elif (tok=="-tgt_val_lid" and len(argv)):    self.tgt_val_lid = argv.pop(0).split(',')
-            elif (tok=="-voc" and len(argv)):            self.voc = argv.pop(0)
-            elif (tok=="-tok" and len(argv)):            self.tok = argv.pop(0)
+            elif (tok=="-src_voc" and len(argv)):        self.src_voc = argv.pop(0)
+            elif (tok=="-tgt_voc" and len(argv)):        self.tgt_voc = argv.pop(0)
+            elif (tok=="-src_tok" and len(argv)):        self.src_tok = argv.pop(0)
+            elif (tok=="-tgt_tok" and len(argv)):        self.tgt_tok = argv.pop(0)
             elif (tok=="-net" and len(argv)):            self.net = argv.pop(0)
             #optimization
             elif (tok=="-opt_lr" and len(argv)):         self.opt_lr = float(argv.pop(0))

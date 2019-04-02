@@ -18,7 +18,8 @@ sys.setdefaultencoding('utf8')
 class Dataset():
 
     def __init__(self, fSRC, fTGT, LID, config):
-        self.vocab = config.vocab
+        self.vocab_src = config.vocab_src
+        self.vocab_tgt = config.vocab_tgt
         self.max_sents = config.max_sents
         self.data = []
         self.data_batch = []
@@ -32,10 +33,14 @@ class Dataset():
 
         ### check lid's exist in vocab
         for lid in LID:
-            lid = self.vocab.beg_delim + lid + self.vocab.end_delim
-            if not self.vocab.exists(lid):
-                sys.stderr.write('error: LID={} does not exists in vocab\n'.format(lid))
+            lid = self.vocab_src.beg_delim + lid + self.vocab_src.end_delim
+            if not self.vocab_src.exists(lid):
+                sys.stderr.write('error: LID={} does not exists in vocab_src\n'.format(lid))
                 sys.exit()
+            if not self.vocab_tgt.exists(lid):
+                sys.stderr.write('error: LID={} does not exists in vocab_src\n'.format(lid))
+                sys.exit()
+
 
         if (len(LID) and len(fSRC)!=len(LID)) or (len(fTGT) and len(fSRC)!=len(fTGT)):
             sys.stderr.write('error: bad number of input files {} {} {}\n'.format(len(fSRC),len(fTGT),len(LID)))
@@ -57,7 +62,7 @@ class Dataset():
                     sys.exit()
                 sys.stderr.write('Reading {}\n'.format(ftgt))
             if len(LID):
-                str_lid = self.vocab.beg_delim + LID[ifile] + self.vocab.end_delim
+                str_lid = self.vocab_src.beg_delim + LID[ifile] + self.vocab_src.end_delim
                 sys.stderr.write('Using LID={}\n'.format(str_lid))
 
             ### fsrc
@@ -72,8 +77,8 @@ class Dataset():
             for sline in fs:
 
                 sline = sline.strip('\n') 
-                if config.token is not None: 
-                    src, _ = config.token.tokenize(str(sline))
+                if config.token_src is not None: 
+                    src, _ = config.token_src.tokenize(str(sline))
                 else: 
                     src = sline.split(' ')
 
@@ -85,8 +90,8 @@ class Dataset():
                 tgt = []
                 if self.is_bitext: 
                     tline = ft.readline().strip('\n')
-                    if config.token is not None: 
-                        tgt, _ = config.token.tokenize(str(tline))
+                    if config.token_tgt is not None: 
+                        tgt, _ = config.token_tgt.tokenize(str(tline))
                     else: 
                         tgt = tline.split(' ')
 
@@ -156,38 +161,38 @@ class Dataset():
 
     def src2isrc_div(self, src, sign):
         src = list(src)
-        src.insert(0,self.vocab.str_bos)
-        src.append(self.vocab.str_eos)
+        src.insert(0,self.vocab_src.str_bos)
+        src.append(self.vocab_src.str_eos)
         #src is    [ <bos>, src1, src2, ..., srcj, <eos>]
         isrc = [] #[ <BOS>, SRC1, SRC2, ..., SRCj, <EOS>]
         div = []  #[ sign,  sign, sign, ..., sign, sign]
         nunk = 0
         for s in src:
             div.append(sign) # sign is -1.0 if not divergent +1.0 if divergent
-            isrc.append(self.vocab.get(s))
-            if isrc[-1] == self.vocab.idx_unk: 
+            isrc.append(self.vocab_src.get(s))
+            if isrc[-1] == self.vocab_src.idx_unk: 
                 nunk += 1
         return isrc, div, nunk
 
     def tgt2itgt_div_iwrd_iref(self, tgt, sign, lid):
         tgt = list(tgt)
-        tgt.insert(0,self.vocab.str_bos)
-        tgt.append(self.vocab.str_eos)
+        tgt.insert(0,self.vocab_tgt.str_bos)
+        tgt.append(self.vocab_tgt.str_eos)
         #tgt is    [ <bos>, tgt1, tgt2, ..., tgti, <eos>]
         itgt = [] #[ <BOS>, TGT1, TGT2, ..., TGTi, <EOS>]
         div =  [] #[ sign,  sign, sign, ..., sign, sign]
-        iwrd = [] #[ <LID>, TGT1, TGT2, ..., TGTi]  (removes last element <eos>, replaces <BOS> by <LID>)
+        iwrd = [] #[ <lid>, TGT1, TGT2, ..., TGTi]  (removes last element <eos>, replaces <BOS> by <LID>)
         iref = [] #[ TGT1,  TGT2, ..., TGTi, <EOS>] (removes first element <bos>)
         nunk = 0
         for t in tgt:
             div.append(sign) # sign is -1.0 if not divergent +1.0 if divergent
-            itgt.append(self.vocab.get(t))
-            if itgt[-1] == self.vocab.idx_unk: 
+            itgt.append(self.vocab_tgt.get(t))
+            if itgt[-1] == self.vocab_tgt.idx_unk: 
                 nunk += 1
 
         iwrd = list(itgt)
         del iwrd[-1] #deleted <eos>
-        iwrd[0] = self.vocab.get(lid) #<bos> => <lid>
+        iwrd[0] = self.vocab_tgt.get(lid) #<bos> => <lid>
         iref = list(itgt)
         del iref[0] #deleted <bos>
         return itgt, div, iwrd, iref, nunk
@@ -237,12 +242,12 @@ class Dataset():
         #print("BATCH max_src={} max_tgt={} max_ref={}".format(max_src,max_tgt,max_ref))
         for i in range(len(SRC)):
             ### add padding 
-            while len(ISRC[i]) < max_src: ISRC[i].append(self.vocab.idx_pad) #<pad>
-            while len(ITGT[i]) < max_tgt: ITGT[i].append(self.vocab.idx_pad) #<pad>
+            while len(ISRC[i]) < max_src: ISRC[i].append(self.vocab_src.idx_pad) #<pad>
+            while len(ITGT[i]) < max_tgt: ITGT[i].append(self.vocab_tgt.idx_pad) #<pad>
             while len(DIV_SRC[i]) < max_src: DIV_SRC[i].append(1.0)
             while len(DIV_TGT[i]) < max_tgt: DIV_TGT[i].append(1.0)
-            while len(IWRD[i]) < max_ref: IWRD[i].append(self.vocab.idx_pad) #<pad>
-            while len(IREF[i]) < max_ref: IREF[i].append(self.vocab.idx_pad) #<pad>
+            while len(IWRD[i]) < max_ref: IWRD[i].append(self.vocab_tgt.idx_pad) #<pad>
+            while len(IREF[i]) < max_ref: IREF[i].append(self.vocab_tgt.idx_pad) #<pad>
             #print(" SRC\t{}".format(" ".join(str(e) for e in SRC[i]))) 
             #print(" ISRC\t{}".format(" ".join(str(e) for e in ISRC[i]))) 
             #print(" LEN_SRC\t{}".format(LEN_SRC[i])) 
