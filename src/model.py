@@ -408,7 +408,7 @@ class Model():
         do_debug = False
         for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(train):
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
-            if iter%5000==0: 
+            if (iter+1)%10000==0: 
                 do_debug = True
             if do_debug:
                 do_debug = self.debug(iter, fd, src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch)
@@ -631,7 +631,8 @@ class Model():
                 print1D("aggr_times_div[{}]".format(b), aggr_times_div_tgt[b])
                 print1D("error[{}]".format(b), error_tgt[b])
                 print0D("sum_error[{}]".format(b),sum_error_tgt[b])
-    
+                break
+
             sys.stderr.write("#############################\n")
             print0D("loss_src (mean)",loss_src)
             print0D("loss_tgt (mean)",loss_tgt)

@@ -244,8 +244,8 @@ class Dataset():
             ### add padding 
             while len(ISRC[i]) < max_src: ISRC[i].append(self.vocab_src.idx_pad) #<pad>
             while len(ITGT[i]) < max_tgt: ITGT[i].append(self.vocab_tgt.idx_pad) #<pad>
-            while len(DIV_SRC[i]) < max_src: DIV_SRC[i].append(1.0)
-            while len(DIV_TGT[i]) < max_tgt: DIV_TGT[i].append(1.0)
+            while len(DIV_SRC[i]) < max_src: DIV_SRC[i].append(DIV_SRC[i][0])
+            while len(DIV_TGT[i]) < max_tgt: DIV_TGT[i].append(DIV_TGT[i][0])
             while len(IWRD[i]) < max_ref: IWRD[i].append(self.vocab_tgt.idx_pad) #<pad>
             while len(IREF[i]) < max_ref: IREF[i].append(self.vocab_tgt.idx_pad) #<pad>
             #print(" SRC\t{}".format(" ".join(str(e) for e in SRC[i]))) 

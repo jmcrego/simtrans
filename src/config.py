@@ -284,7 +284,7 @@ Network LIDs (comma-separated list)
         ################
         ### learning ###
         ################
-        if   not len(self.src_trn) or len(self.src_trn)!=len(self.tgt_trn) or len(self.src_trn)!=len(self.tgt_trn_lid):
+        if not len(self.src_trn) or len(self.src_trn)!=len(self.tgt_trn) or len(self.src_trn)!=len(self.tgt_trn_lid):
             sys.stderr.write('error: bad training files\n{}'.format(self.usage))
             sys.exit()
 
