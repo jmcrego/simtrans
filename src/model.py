@@ -79,12 +79,14 @@ class Model():
 
         with tf.variable_scope("blstm_{}".format(namelayer), reuse=tf.AUTO_REUSE):
             cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed), state_is_tuple=True)
-            cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=K)
+#            cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=K)
             cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed), state_is_tuple=True)
-            cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=K)
+#            cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=K)
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=seq_length, dtype=tf.float32)
             output = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
+            output = tf.nn.dropout(output, keep_prob=KEEP)
             last = tf.concat([last_src_fw.h, last_src_bw.h], axis=1) #[B, layers[-1]*2] (i take h since last_state is a tuple with (c,h))
+            last = tf.nn.dropout(last, keep_prob=KEEP)
         return output, last
 
 
@@ -124,7 +126,7 @@ class Model():
 
         if layer == 'last':
             if tf.size(last) == 0: 
-                sys.stderr.write("error: -net_snt 'last' cannot be used with the last enc layer\n")
+                sys.stderr.write("error: sentence embedding 'last' cannot be used with the previous layer\n")
                 sys.exit()
             return last #[B,Hs[-1]*2]
 
@@ -146,7 +148,7 @@ class Model():
             embed_snt = tf.reduce_sum(embed_snt, axis=1) / tf.expand_dims(tf.to_float(l), 1) #[B,H*2] or [B,E] if word embedding
             return embed_snt
 
-        sys.stderr.write("error: bad -net_snt option '{}'\n".format(layer))
+        sys.stderr.write("error: bad sentence embedding option '{}'\n".format(layer))
         sys.exit()
 
 ###################
@@ -228,7 +230,7 @@ class Model():
             elif t=='s':
                 Embed = self.sembedding(Output, Last, n, Length) #not used
             else:
-                sys.stderr.write("error: bad encoder {}-th layer type={}\n".format(l,t))
+                sys.stderr.write("error: bad ali {}-th layer type={}\n".format(l,t))
                 sys.exit()
 
         self.out_tgt = Output
@@ -484,7 +486,6 @@ class Model():
         for iter, (src_batch, tgt_batch, ref_src_batch, ref_tgt_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch) in enumerate(tst):
 
             fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch)
-#            self.debug2(fd,src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch)
             if tst.is_bitext:
                 embed_snt_src_batch, embed_snt_tgt_batch = self.sess.run([self.embed_snt_src, self.embed_snt_tgt], feed_dict=fd)
             else:
@@ -599,7 +600,7 @@ class Model():
             sys.stderr.write("shape of embed_snt_tgt = {}\n".format(np.array(embed_snt_tgt).shape))
 
             for b in range(len(align)):
-                if b==0:
+                if b==0: # debug only the first example in this batch
                     sys.stderr.write("### {} #######################\n".format(b))
                     sys.stderr.write("src\t{}\n".format(" ".join(str(e) for e in raw_src_batch[b])))
                     sys.stderr.write("isrc\t{}\n".format(" ".join([str(e) for e in src_batch[b]])))
@@ -640,30 +641,7 @@ class Model():
             print0D("loss",loss)  
             return False #do not debug again
             #sys.exit()
-        else:
-            embed_src, out_src, last_src, embed_snt_src, embed_tgt, embed_snt_src_plus_tgt, out_tgt, out_logits, out_pred = self.sess.run([self.embed_src, self.out_src, self.last_src, self.embed_snt_src, self.embed_tgt, self.embed_snt_src_plus_tgt, self.out_tgt, self.out_logits, self.out_pred], feed_dict=fd)
-            sys.stderr.write("Encoder\n")
-            sys.stderr.write("shape of embed_src = {} [B,Ss,Es]\n".format(np.array(embed_src).shape))
-            sys.stderr.write("shape of out_src = {} [B,Ss,Hs] or [B,Ss,Es]\n".format(np.array(out_src).shape))
-            sys.stderr.write("shape of last_src = {} [B,Hs[-1]]\n".format(np.array(last_src).shape))
-            sys.stderr.write("shape of embed_snt_src = {}\n".format(np.array(embed_snt_src).shape))
-            sys.stderr.write("Decoder\n")
-            sys.stderr.write("shape of embed_tgt = {} [B,St,Et]\n".format(np.array(embed_tgt).shape))
-            sys.stderr.write("shape of embed_snt_src_plus_tgt = {} [B,St,Hs[-1]+Et] or [B,St,Es+Et]\n".format(np.array(embed_snt_src_plus_tgt).shape))
-            sys.stderr.write("shape of out_tgt = {} [B,St,Ht]\n".format(np.array(out_tgt).shape))
-            sys.stderr.write("shape of out_logits = {} [B,St,V]\n".format(np.array(out_logits).shape))
-            sys.stderr.write("shape of out_pred = {} [B,St]\n".format(np.array(out_pred).shape))
 
-    def debug2(self, fd, src_batch, len_src_batch, tgt_batch, len_tgt_batch, ref_src_batch, ref_tgt_batch):
-        sys.stderr.write("src_batch {}\n".format(src_batch))
-        sys.stderr.write("len_src_batch {}\n".format(len_src_batch))
-        sys.stderr.write("tgt_batch {}\n".format(tgt_batch))
-        sys.stderr.write("len_tgt_batch {}\n".format(len_tgt_batch))
-        sys.stderr.write("ref_tgt_batch {}\n".format(ref_tgt_batch))
-        embed_src, out_src, embed_snt_src = self.sess.run([self.embed_src, self.out_src, self.embed_snt_src], feed_dict=fd)
-        sys.stderr.write("shape of embed_src = {}\n".format(np.array(embed_src).shape))
-        sys.stderr.write("shape of out_src = {}\n".format(np.array(out_src).shape))
-        sys.stderr.write("shape of embed_snt_src = {}\n".format(np.array(embed_snt_src).shape))
 
 
 
