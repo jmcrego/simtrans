@@ -66,7 +66,7 @@ class Model():
         sys.stderr.write("\twembedding V={} E={} K={:.3f} name={}\n".format(V,E,K,namelayer))
 
         with tf.device('/cpu:0'), tf.variable_scope("embedding_{}".format(namelayer), reuse=tf.AUTO_REUSE): ### same embeddings for src/tgt words
-            self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.01, maxval=0.01), dtype=tf.float32, name="LT")
+            self.LT = tf.get_variable(initializer = tf.random_uniform([V, E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="LT")
             embedded = tf.nn.embedding_lookup(self.LT, input)
             embedded = tf.nn.dropout(embedded, keep_prob=K)  #[B,Ss,E]
         return embedded
@@ -78,9 +78,9 @@ class Model():
         sys.stderr.write("\tblsmt hunits={} K={:.3f} name={}\n".format(hunits,K,namelayer))
 
         with tf.variable_scope("blstm_{}".format(namelayer), reuse=tf.AUTO_REUSE):
-            cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed), state_is_tuple=True)
+            cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
 #            cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=K)
-            cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed), state_is_tuple=True)
+            cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
 #            cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=K)
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=seq_length, dtype=tf.float32)
             output = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
@@ -98,12 +98,12 @@ class Model():
         initial_state = None
         if origin is not None:
             with tf.variable_scope("bridge_{}".format(namelayer),reuse=tf.AUTO_REUSE):
-                initial_state_h = tf.layers.dense(origin, hunits, use_bias=False, kernel_initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed)) # H*2 or E => H
+                initial_state_h = tf.layers.dense(origin, hunits, use_bias=False, kernel_initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed)) # H*2 or E => H
                 initial_state_c = tf.zeros(tf.shape(initial_state_h))
                 initial_state = tf.contrib.rnn.LSTMStateTuple(initial_state_c, initial_state_h)
 
         with tf.variable_scope("lstm_{}".format(namelayer), reuse=tf.AUTO_REUSE):
-            cell = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.01, 0.01, seed=self.config.seed))
+            cell = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed))
             cell = tf.contrib.rnn.DropoutWrapper(cell=cell, output_keep_prob=K)
             output, last = tf.nn.dynamic_rnn(cell, input, initial_state=initial_state, sequence_length=seq_length, dtype=tf.float32)
         return output, last
