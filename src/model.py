@@ -84,9 +84,9 @@ class Model():
 #            cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=K)
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=seq_length, dtype=tf.float32)
             output = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
-            output = tf.nn.dropout(output, keep_prob=KEEP)
+            output = tf.nn.dropout(output, keep_prob=K)
             last = tf.concat([last_src_fw.h, last_src_bw.h], axis=1) #[B, layers[-1]*2] (i take h since last_state is a tuple with (c,h))
-            last = tf.nn.dropout(last, keep_prob=KEEP)
+            last = tf.nn.dropout(last, keep_prob=K)
         return output, last
 
 
