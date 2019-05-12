@@ -43,7 +43,7 @@ class Doc():
     def exists(self, w):
         return w in self.w2freq
 
-    def Tf(self, w)
+    def Tf(self, w):
         #returns 0.0 if w not in w2freq
         return self.w2freq[w] / float(self.N)
 
