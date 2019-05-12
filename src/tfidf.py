@@ -13,8 +13,9 @@ from tokenizer import build_tokenizer
 
 class Doc():
     def __init__(self, file, token=None):
-        self.N = 0 ### N words in document        
-        self.Tf = defaultdict(float)
+        self.N = 0 ### num words in document
+        self.F = defaultdict(int) ### frequency
+        self.Tf = defaultdict(float) ### term frequency 
         nsents = 0
         ### compute frequency of words
         with open(file) as f:
@@ -29,21 +30,22 @@ class Doc():
                     if w=='': 
                         #sys.stderr.write('warning: empty word >{}< in sentence >{}<\n'.format(w,line))
                         continue
-                    self.Tf[w] += 1
+                    self.F[w] += 1
                     self.N += 1
-        ### compute Tf (freq / N) and compute norm
+        ### compute Tf (freq / N) and norm
         norm = 0.0
-        for w,f in self.Tf.iteritems():
-            self.Tf[w] = f/(1.0*self.N)
-            norm += math.pow(self.Tf[w],2)
+        for w,f in self.F.iteritems():
+            tf = f/(1.0*self.N)
+            self.Tf[w] = tf
+            norm += math.pow(tf,2.0)
         norm =  math.pow(norm, 0.5) ### 1 / norm^2
-        ### normalize
+        ### normalize Tf
         summ = 0.0
-        for w,f in self.Tf.iteritems():
-            f_norm = f/(1.0*norm)
-            self.Tf[w] = f_norm
-            summ += f_norm
-        sys.stderr.write('Read {} with {} sentences voc={} norm={} sum={}\n'.format(file,nsents,len(self.Tf),norm,summ))
+        for w,tf in self.Tf.iteritems():
+            tf_norm = tf/norm
+            self.Tf[w] = tf_norm
+            summ += tf_norm
+        sys.stderr.write('Read {} with {} sentences voc={} norm={} sum(tf)={}\n'.format(file,nsents,len(self.Tf),norm,summ))
 
     def exists(self, w):
         return w in self.Tf
