@@ -14,7 +14,7 @@ from tokenizer import build_tokenizer
 class Doc():
     def __init__(self, file, token=None):
         self.N = 0 ### num words in document
-        self.Tf = defaultdict(float) ### term frequency 
+        self.F = defaultdict(int) ### term frequency 
         nsents = 0
         ### compute frequency of words
         with open(file) as f:
@@ -29,25 +29,13 @@ class Doc():
                     if w=='': 
                         #sys.stderr.write('warning: empty word >{}< in sentence >{}<\n'.format(w,line))
                         continue
-                    self.Tf[w] += 1.0
+                    self.F[w] += 1
                     self.N += 1
         ### compute Tf (freq / N) and norm of the resulting vector
-        norm = 0.0
-        for w,f in self.Tf.iteritems():
-            tf = f/(1.0*self.N)
-            self.Tf[w] = tf
-            norm += math.pow(tf,2.0)
-        norm =  math.pow(norm, 0.5) ### 1 / norm^2
-        ### normalize Tf
-        for w,tf in self.Tf.iteritems():
-            self.Tf[w] = tf/norm
-        sys.stderr.write('Read {} with {} sentences voc={} norm={}\n'.format(file,nsents,len(self.Tf),norm))
+        sys.stderr.write('Read {} with {} sentences voc={}\n'.format(file,nsents,len(self.F)))
 
     def exists(self, w):
         return w in self.Tf
-
-#    def tf(self, w):
-#        return self.Tf[w] ### returns 0.0 if does not exist
 
 class TfIdf():
 
@@ -68,6 +56,7 @@ class TfIdf():
             for w,n in Docs[-1].Tf.iteritems():
                 Vocab2Freq[w] += n
 
+        ### computes self.Vocab
         for i,w_n in enumerate(sorted(Vocab2Freq.items(), key=lambda x: x[1], reverse=True)):
             if max>0 and i==max: break
             self.Vocab.append(w_n[0])
@@ -75,12 +64,13 @@ class TfIdf():
         D = len(Docs) ### number of documents
         for w in self.Vocab:
             N = sum(d.exists(w) for d in Docs) ### number of documents where appears w
-            if N==0: N = D
+            if N==0: N = D ### should never happen 
             idf = math.log(D/1.0*N)
 #            sys.stderr.write('D={} N={} idf={}\n'.format(D,N,idf))
             tfidf = []
             for doc in Docs:
-                tfidf.append(doc.Tf[w] * idf)
+                tf = doc.F[w]/(1.0*doc.N)
+                tfidf.append(tf * idf)
             self.TfIdf.append(tfidf)
             self.Idf.append(idf)
 
