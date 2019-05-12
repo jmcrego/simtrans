@@ -88,8 +88,13 @@ class TfIdf():
         sys.stderr.write('normD1={}\n'.format(normD))
         normD = math.pow(np.asarray(normD),0.5)
         sys.stderr.write('normD2={}\n'.format(normD))
-        self.TfIdf = np.asarray(self.TfIdf) / normD
+        self.TfIdf = np.asarray(self.TfIdf)
         self.Idf = np.asarray(self.Idf)
+        for i in range(len(self.TfIdf)):
+            sys.stderr.write('{} => '.format(self.TfIdf[i]))
+            self.TfIdf[i] = np.divide(self.TfIdf[i], normD)
+            sys.stderr.write('{}\n'.format(self.TfIdf[i]))
+
         sys.exit()
         ### normalize
         for d in range(self.TfIdf.shape[1]):
