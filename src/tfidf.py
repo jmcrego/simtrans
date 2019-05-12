@@ -85,11 +85,13 @@ class TfIdf():
             self.Idf.append(idf)
             sys.stderr.write('w:{} idf={} tfidf={}\n'.format(w,idf,tfidf))
 
-        sys.stderr.write('normD1={}\n'.format(normD))
-        normD = math.pow(np.asarray(normD),0.5)
-        sys.stderr.write('normD2={}\n'.format(normD))
+        normD = np.asarray(normD)
         self.TfIdf = np.asarray(self.TfIdf)
         self.Idf = np.asarray(self.Idf)
+
+        sys.stderr.write('normD1={}\n'.format([x for x in normD]))
+        normD = math.pow(normD,0.5)
+        sys.stderr.write('normD2={}\n'.format([x for x in normD]))
         for i in range(len(self.TfIdf)):
             sys.stderr.write('{} => '.format(self.TfIdf[i]))
             self.TfIdf[i] = np.divide(self.TfIdf[i], normD)
