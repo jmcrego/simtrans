@@ -14,8 +14,9 @@ from tokenizer import build_tokenizer
 class Doc():
     def __init__(self, file, token=None):
         self.N = 0 ### N words in document        
-        self.Tf = defaultdict(int)
+        self.Tf = defaultdict(float)
         nsents = 0
+        ### compute frequency of words
         with open(file) as f:
             for line in f:
                 nsents += 1
