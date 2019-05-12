@@ -89,7 +89,7 @@ class TfIdf():
         self.Idf = np.asarray(self.Idf)
 
         sys.stderr.write('normD1={}\n'.format([x for x in normD]))
-        normD = math.pow(normD,0.5)
+        normD = np.power(normD,0.5)
         sys.stderr.write('normD2={}\n'.format([x for x in normD]))
         for i in range(len(self.TfIdf)):
             sys.stderr.write('{} => '.format(self.TfIdf[i]))
