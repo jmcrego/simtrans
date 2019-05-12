@@ -81,6 +81,7 @@ class TfIdf():
         for d in range(self.TfIdf.shape[1]):
             vdoc = self.TfIdf[:,d]
             norm_vdoc = np.linalg.norm(vdoc)
+            sys.stderr.write('Norm vdoc[{}]={}\n'.format(d,norm_vdoc))
             self.TfIdf[:,d] = vdoc / norm_vdoc
 
     def compute_distances(self,word2freq):
