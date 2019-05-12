@@ -83,53 +83,38 @@ class TfIdf():
                 normD[d] += np.power(val,2.0)
             self.TfIdf.append(tfidf)
             self.Idf.append(idf)
-            sys.stderr.write('w:{} idf={} tfidf={}\n'.format(w,idf,tfidf))
 
         self.TfIdf = np.asarray(self.TfIdf)
         self.Idf = np.asarray(self.Idf)
-
         ### normalize
-        for d in range(self.TfIdf.shape[1]):
-            vdoc = self.TfIdf[:,d]
-            normD[d] = np.linalg.norm(vdoc)
-
-
-        sys.stderr.write('normD1={}\n'.format([x for x in normD]))
+        #for d in range(D):
+        #    vdoc = self.TfIdf[:,d]
+        #    normD[d] = np.linalg.norm(vdoc)
+        ### normalize
         normD = np.power(normD,0.5)
-        sys.stderr.write('normD2={}\n'.format([x for x in normD]))
         for i in range(len(self.TfIdf)):
-            sys.stderr.write('{} => '.format(self.TfIdf[i]))
             self.TfIdf[i] = np.divide(self.TfIdf[i], normD)
-            sys.stderr.write('{}\n'.format(self.TfIdf[i]))
 
-        sys.exit()
-        ### normalize
-        for d in range(self.TfIdf.shape[1]):
-            vdoc = self.TfIdf[:,d]
-            norm_vdoc = np.linalg.norm(vdoc)
-            sys.stderr.write('Norm vdoc[{}] ({}) = {}\n'.format(d,self.Tags[d],norm_vdoc))
-            self.TfIdf[:,d] = vdoc / norm_vdoc
-
-    def compute_distances(self,word2freq,N):
+    def compute_distances(self,words,ftst):
+        doc = Doc(words,ftst)
         ### build tst vector
-        tf_tst = [0.0] * len(self.Vocab)
-        for i,word in enumerate(self.Vocab):
-            if word in word2freq:
-                tf_tst[i] = word2freq[word] / (1.0 * N)
-
-        tfidf_tst = np.asarray(tf_tst) * self.Idf
-        norm_tfidf_tst = np.linalg.norm(tfidf_tst)
-        if norm_tfidf_tst == 0.0:
+        tfidf_tst = []
+        norm = 0.0
+        for i,w in enumerate(self.Vocab):
+            val = doc.Tf(w) * self.idf[i]
+            tfidf_tst.append(val)
+            norm += np.power(val,2.0)
+        norm = np.power(norm,0.5)
+        if norm == 0.0:
             print('norm:0')
             return
-#        sys.stderr.write('Norm tst = {}\n'.format(norm_tfidf_tst))
-        tfidf_tst = tfidf_tst / norm_tfidf_tst
-#        print('tfidf_tst: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(tfidf_tst)]))
+
+        tfidf_tst = np.asarray(tfidf_tst)
+        tfidf_tst = np.divide(tfidf_tst, norm)
 
         res = {}
-        for i,tag in enumerate(self.Tags):
-            ### build doc_i vector
-            vdoc = self.TfIdf[:,i]
+        for d,tag in enumerate(self.Tags):
+            vdoc = self.TfIdf[:,d]
             res[tag] = np.sum(tfidf_tst * vdoc)
 #            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
 
@@ -139,8 +124,11 @@ class TfIdf():
         print(' '.join(out))
 
     def inference(self, ftst, snt, token):
-        word2freq = defaultdict(int)
-        nwords = 0
+
+        if not snt:
+            self.compute_distances([],ftst)
+            return
+
         with open(ftst) as f:
             for line in f:
                 line = line.strip()
@@ -148,18 +136,7 @@ class TfIdf():
                     toks, _ = token.tokenize(str(line))
                 else: 
                     toks = line.split(' ')
-                for w in toks:
-                    if w=='': 
-                        #sys.stderr.write('warning: empty word >{}< in sentence >{}<\n'.format(w,line))
-                        continue
-                    word2freq[w] += 1
-                    nwords += 1
-                if snt:
-                    self.compute_distances(word2freq,nwords)
-                    word2freq = defaultdict(int)
-
-        if not snt:
-            self.compute_distances(word2freq)
+                self.compute_distances(toks,'')
 
     def debug(self):
         print(self.Tags)
