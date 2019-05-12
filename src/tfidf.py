@@ -92,9 +92,9 @@ class TfIdf():
         tfidf_tst = np.asarray(tf_tst) * self.Idf
         norm_tfidf_tst = np.linalg.norm(tfidf_tst)
         if norm_tfidf_tst == 0.0:
-            print('norm:{}'.format(0.0))
+            print('norm:0')
             return
-        sys.stderr.write('Norm tst = {}\n'.format(norm_tfidf_tst))
+#        sys.stderr.write('Norm tst = {}\n'.format(norm_tfidf_tst))
         tfidf_tst = tfidf_tst / norm_tfidf_tst
 #        print('tfidf_tst: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(tfidf_tst)]))
 
