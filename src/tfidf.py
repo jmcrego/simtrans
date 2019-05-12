@@ -66,7 +66,7 @@ class TfIdf():
             N = sum(d.exists(w) for d in Docs) ### number of documents where appears w
             if N==0: N = D
             idf = math.log(D/1.0*N)
-            sys.stderr.write('D={} N={} idf={}\n'.format(D,N,idf))
+#            sys.stderr.write('D={} N={} idf={}\n'.format(D,N,idf))
 #            tf = []
             tfidf = []
             for doc in Docs:
