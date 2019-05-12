@@ -13,7 +13,7 @@ from tokenizer import build_tokenizer
 
 class Doc():
     def __init__(self, file, token=None):
-        self.N = 0 ### N words in document
+        self.N = 0 ### N words in document        
         self.Tf = defaultdict(int)
         nsents = 0
         with open(file) as f:
@@ -30,13 +30,25 @@ class Doc():
                         continue
                     self.Tf[w] += 1
                     self.N += 1
-        sys.stderr.write('Read {} with {} sentences voc={}\n'.format(file,nsents,len(self.Tf)))
+        ### compute Tf (freq / N) and compute norm
+        norm = 0
+        for w,f in self.Tf.iteritems():
+            self.Tf[w] = f/(1.0*self.N)
+            norm += math.pow(self.Tf[w],2)
+        norm =  math.pow(norm, 0.5) ### 1 / norm^2
+        ### normalize
+        summ = 0.0
+        for w,f in self.Tf.iteritems():
+            f_norm = f/(1.0*norm)
+            self.Tf[w] = f_norm
+            summ += f_norm
+        sys.stderr.write('Read {} with {} sentences voc={} norm={} sum={}\n'.format(file,nsents,len(self.Tf),norm,summ))
 
     def exists(self, w):
         return w in self.Tf
 
-    def tf(self, w):
-        return self.Tf[w] / (1.0 * self.N) ### returns 0.0 if does not exist
+#    def tf(self, w):
+#        return self.Tf[w] ### returns 0.0 if does not exist
 
 class TfIdf():
 
@@ -69,7 +81,7 @@ class TfIdf():
 #            sys.stderr.write('D={} N={} idf={}\n'.format(D,N,idf))
             tfidf = []
             for doc in Docs:
-                tfidf.append(doc.tf(w) * idf)
+                tfidf.append(doc.Tf[w] * idf)
             self.TfIdf.append(tfidf)
             self.Idf.append(idf)
 
