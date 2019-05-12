@@ -14,7 +14,6 @@ from tokenizer import build_tokenizer
 class Doc():
     def __init__(self, file, token=None):
         self.N = 0 ### num words in document
-        self.F = defaultdict(int) ### frequency
         self.Tf = defaultdict(float) ### term frequency 
         nsents = 0
         ### compute frequency of words
@@ -30,23 +29,19 @@ class Doc():
                     if w=='': 
                         #sys.stderr.write('warning: empty word >{}< in sentence >{}<\n'.format(w,line))
                         continue
-                    self.F[w] += 1
+                    self.Tf[w] += 1.0
                     self.N += 1
         ### compute Tf (freq / N) and norm of the resulting vector
         norm = 0.0
-        for w,f in self.F.iteritems():
+        for w,f in self.Tf.iteritems():
             tf = f/(1.0*self.N)
             self.Tf[w] = tf
             norm += math.pow(tf,2.0)
         norm =  math.pow(norm, 0.5) ### 1 / norm^2
         ### normalize Tf
-        newnorm = 0.0
         for w,tf in self.Tf.iteritems():
-            tf_norm = tf/norm
-            self.Tf[w] = tf_norm
-            newnorm += math.pow(tf_norm,2.0)
-        newnorm =  math.pow(newnorm, 0.5) ### 1 / norm^2
-        sys.stderr.write('Read {} with {} sentences voc={} norm={} normalized_norm(tf)={}\n'.format(file,nsents,len(self.Tf),norm,newnorm))
+            self.Tf[w] = tf/norm
+        sys.stderr.write('Read {} with {} sentences voc={} norm={}\n'.format(file,nsents,len(self.Tf),norm))
 
     def exists(self, w):
         return w in self.Tf
