@@ -101,7 +101,7 @@ class TfIdf():
         tfidf_tst = []
         norm = 0.0
         for i,w in enumerate(self.Vocab):
-            val = doc.Tf(w) * self.idf[i]
+            val = doc.Tf(w) * self.Idf[i]
             tfidf_tst.append(val)
             norm += np.power(val,2.0)
         norm = np.power(norm,0.5)
