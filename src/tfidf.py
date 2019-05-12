@@ -80,13 +80,19 @@ class TfIdf():
             for d,doc in enumerate(Docs):
                 val = doc.Tf(w) * idf
                 tfidf.append(val)
-                normD[d] += math.pow(val,2.0)
+                normD[d] += np.power(val,2.0)
             self.TfIdf.append(tfidf)
             self.Idf.append(idf)
             sys.stderr.write('w:{} idf={} tfidf={}\n'.format(w,idf,tfidf))
 
         self.TfIdf = np.asarray(self.TfIdf)
         self.Idf = np.asarray(self.Idf)
+
+        ### normalize
+        for d in range(self.TfIdf.shape[1]):
+            vdoc = self.TfIdf[:,d]
+            normD[d] = np.linalg.norm(vdoc)
+
 
         sys.stderr.write('normD1={}\n'.format([x for x in normD]))
         normD = np.power(normD,0.5)
