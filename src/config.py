@@ -128,7 +128,7 @@ class Config():
    -tgt_tok          FILE : tgt onmt tok options yaml file (needed to initialize learning)
    -net              FILE : network topology file (needed to initialize learning)
 
-   -opt_lr          FLOAT : initial learning rate [0.0001]
+   -opt_lr          FLOAT : initial learning rate [0.001]
    -opt_decay       FLOAT : learning rate decay value [0.96]
    -opt_minlr       FLOAT : do not decay if learning rate is lower than this [0.0]
    -clip            FLOAT : gradient clipping value (0.0 for no clipping) [0.0]
@@ -223,7 +223,7 @@ Network LIDs (comma-separated list)
         self.token_tgt = None #onmt tokenizer
         self.network = None #network topology
         #optimization
-        self.opt_lr = 0.0001
+        self.opt_lr = 0.001
         self.opt_decay = 0.96
         self.opt_minlr = 0.0
         self.clip = 0.0

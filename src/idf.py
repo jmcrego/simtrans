@@ -72,8 +72,8 @@ def main():
     usage = '''{} [-data FILE] ( -save FILE | -load FILE )
        -tok  FILE : options for tokenizer
        -data FILE : file used to learn/inference
-       -save FILE : save tfidf model after building it with data file
-       -load FILE : load tfidf model and use it for inference on data file
+       -save FILE : save tfidf model after building it with data file      (LEARNING)
+       -load FILE : load tfidf model and use it for inference on data file (INFERENCE)
 '''.format(name)
 
     ftok = None
@@ -100,6 +100,7 @@ def main():
             opts = yaml.load(yamlfile)
             token = build_tokenizer(opts)
 
+    ### learning ###
     if fsave is not None and len(fdata):
         sys.stderr.write('Learning mode\n')
         sentIdf = SentIdf()
@@ -109,6 +110,7 @@ def main():
         sys.stderr.write('Model saved in {}\n'.format(fsave))
         sentIdf.save(fsave)
 
+    ### inference ###
     if fload is not None and len(fdata):
         sys.stderr.write('Inference mode. Model in {}\n'.format(fload))
         sentIdf = SentIdf(fload)

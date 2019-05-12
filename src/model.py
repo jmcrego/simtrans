@@ -33,26 +33,40 @@ def GetHumanReadable(size,precision=2):
         size = size/1024.0 #apply the division
     return "%.*f%s"%(precision,size,suffixes[suffixIndex])
 
+def str_time():
+    return time.strftime("[%Y-%m-%d_%X]", time.localtime())
+
 class Score():
     def __init__(self):
-        #loss
-        self.sumloss = 0.0
+        #epoch total
+        self.total_sumloss = 0.0
         self.total_iters = 0
-        self.Loss = 0.0
-        #tokens
-        self.sumok = 0
-        self.total_words = 0
-        self.Acc = 0.0
+        #partial
+        self.partial_sumloss = 0.0
+        self.partial_iters = 0
+        #time records
+        self.ini_time = time.time()
+        self.pre_time = self.ini_time
 
-    def add(self,loss,tout,tref,tmask):
+    def add_batch_loss(self,loss):
         self.total_iters += 1
-        self.sumloss += loss
-        self.Loss = self.sumloss / (1.0 * self.total_iters)
-        if len(tout):
-            masked_equals = np.logical_and(np.equal(tout,tref), tmask)
-            self.total_words += np.sum(tmask)
-            self.sumok += np.count_nonzero(masked_equals)
-            self.Acc = 100.0 * self.sumok / self.total_words
+        self.total_sumloss += loss
+        self.partial_iters += 1
+        self.partial_sumloss += loss
+
+    def get_partial(self):
+        partial_loss = self.partial_sumloss / (1.0 * self.partial_iters)
+        self.partial_iters = 0
+        self.partial_sumloss = 0.0
+        curr_time = time.time()
+        elapsed_time = curr_time - self.pre_time
+        self.pre_time = curr_time
+        return partial_loss, elapsed_time
+
+    def get_total():
+        total_loss = self.total_sumloss / (1.0 * self.total_iters)
+        return total_loss, self.total_loss, time.time() - self.ini_time
+
 
 class Model():
     def __init__(self, config):
@@ -78,15 +92,17 @@ class Model():
         sys.stderr.write("\tblsmt hunits={} K={:.3f} name={}\n".format(hunits,K,namelayer))
 
         with tf.variable_scope("blstm_{}".format(namelayer), reuse=tf.AUTO_REUSE):
-            cell_fw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+            cell_fw = tf.contrib.rnn.LSTMCell(hunits, state_is_tuple=True) #, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed))
 #            cell_fw = tf.contrib.rnn.DropoutWrapper(cell=cell_fw, output_keep_prob=K)
-            cell_bw = tf.contrib.rnn.LSTMCell(hunits, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed), state_is_tuple=True)
+            cell_bw = tf.contrib.rnn.LSTMCell(hunits, state_is_tuple=True) #, initializer=tf.truncated_normal_initializer(-0.1, 0.1, seed=self.config.seed))
 #            cell_bw = tf.contrib.rnn.DropoutWrapper(cell=cell_bw, output_keep_prob=K)
             (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, input, sequence_length=seq_length, dtype=tf.float32)
-            output = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
-            output = tf.nn.dropout(output, keep_prob=K)
+            #divergence
             last = tf.concat([last_src_fw.h, last_src_bw.h], axis=1) #[B, layers[-1]*2] (i take h since last_state is a tuple with (c,h))
             last = tf.nn.dropout(last, keep_prob=K)
+            #alignment
+            output = tf.concat([output_src_fw, output_src_bw], axis=2) #[B,Ss,layers[i]*2]
+            output = tf.nn.dropout(output, keep_prob=K)
         return output, last
 
 
@@ -167,6 +183,47 @@ class Model():
         self.div_src       = tf.placeholder(tf.float32, shape=[None,None], name="div_src")  # Shape: batch_size x |Ei| (sequence length)
         self.div_tgt       = tf.placeholder(tf.float32, shape=[None,None], name="div_tgt")  # Shape: batch_size x |Ei| (sequence length)
 
+    def add_encoder2(self):
+        E = 256
+        KEEP = 0.7
+        L1 = 256
+
+        with tf.device('/cpu:0'), tf.variable_scope("embedding_src"):
+            self.LT_src = tf.get_variable(initializer = tf.random_uniform([len(self.config.vocab_src), E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="embeddings_src")
+            self.embed_src = tf.nn.embedding_lookup(self.LT_src, self.input_src, name="embed_src")
+            self.embed_src = tf.nn.dropout(self.embed_src, keep_prob=KEEP)
+
+        with tf.variable_scope("bi-lstm_src"):
+            cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
+            cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
+            (output_src_fw, output_src_bw), (last_src_fw, last_src_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_src, sequence_length=self.len_src, dtype=tf.float32)
+
+        ### divergence
+        self.last_src = tf.concat([last_src_fw[1], last_src_bw[1]], axis=1)
+        self.last_src = tf.nn.dropout(self.last_src, keep_prob=KEEP)
+        ### alignment
+        self.out_src = tf.concat([output_src_fw, output_src_bw], axis=2)
+        self.out_src = tf.nn.dropout(self.out_src, keep_prob=KEEP)
+
+
+        with tf.device('/cpu:0'), tf.variable_scope("embedding_tgt"):
+            self.LT_tgt = tf.get_variable(initializer = tf.random_uniform([len(self.config.vocab_tgt), E], minval=-0.1, maxval=0.1), dtype=tf.float32, name="embeddings_tgt")
+            self.embed_tgt = tf.nn.embedding_lookup(self.LT_tgt, self.input_tgt, name="embed_src")
+            self.embed_tgt = tf.nn.dropout(self.embed_tgt, keep_prob=KEEP)
+
+        with tf.variable_scope("bi-lstm_tgt"):
+            cell_fw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
+            cell_bw = tf.contrib.rnn.LSTMCell(L1, state_is_tuple=True)
+            (output_tgt_fw, output_tgt_bw), (last_tgt_fw, last_tgt_bw) = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, self.embed_tgt, sequence_length=self.len_tgt, dtype=tf.float32)
+
+        ### divergence
+        self.last_tgt = tf.concat([last_tgt_fw[1], last_tgt_bw[1]], axis=1)
+        self.last_tgt = tf.nn.dropout(self.last_tgt, keep_prob=KEEP)
+        ### alignment
+        self.out_tgt = tf.concat([output_tgt_fw, output_tgt_bw], axis=2)
+        self.out_tgt = tf.nn.dropout(self.out_tgt, keep_prob=KEEP)
+
+
     def add_encoder(self, side):
         sys.stderr.write("encoder_{}\n".format(side))
         if side=='src':
@@ -205,6 +262,23 @@ class Model():
 
         return Output, Embed
 
+    def add_align2(self):
+        R = 1.0
+
+        with tf.name_scope("align"):
+            self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align")
+
+            self.aggregation_src = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (tf.exp(tf.transpose(self.align, [0, 2, 1]) * R), self.len_tgt), dtype=tf.float32)), R, name="aggregation_src")
+            self.aggregation_tgt = tf.divide(tf.log(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1, :], 0), (tf.exp(self.align * R),                          self.len_src), dtype=tf.float32)), R, name="aggregation_tgt")
+
+            self.output_src = tf.log(1 + tf.exp(self.aggregation_src * self.div_src))
+            self.output_tgt = tf.log(1 + tf.exp(self.aggregation_tgt * self.div_tgt))
+
+            self.loss_src = tf.reduce_mean(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1]), (self.output_src, self.len_src), dtype=tf.float32))
+            self.loss_tgt = tf.reduce_mean(tf.map_fn(lambda (x, l): tf.reduce_sum(x[1:l-1]), (self.output_tgt, self.len_tgt), dtype=tf.float32))
+            self.aloss = self.loss_tgt + self.loss_src
+
+
 
     def add_align(self):
         sys.stderr.write("align\n")
@@ -215,6 +289,7 @@ class Model():
         Output = self.input_tgt
         Length = self.len_tgt
         Vocab = self.config.vocab_tgt
+
         Last = []
         Embed = []
         for l in range(self.config.network.nlayers('ali')):
@@ -237,6 +312,7 @@ class Model():
         self.embed_snt_tgt = Embed
 
         with tf.name_scope("align"):
+
             self.align = tf.map_fn(lambda (x, y): tf.matmul(x, tf.transpose(y)), (self.out_src, self.out_tgt), dtype=tf.float32, name="align") #[B,Ss,St]
             self.align_t = tf.transpose(self.align, [0, 2, 1]) #[B,St,Ss]
 
@@ -265,6 +341,7 @@ class Model():
             self.loss_tgt = tf.reduce_mean(self.sum_error_tgt)
 
             self.aloss = self.loss_tgt + self.loss_src
+
 
     def add_translate(self):
         sys.stderr.write("translate\n")
@@ -345,7 +422,8 @@ class Model():
     def build_graph(self):
         self.add_placeholders()
 
-        self.out_src, self.embed_snt_src = self.add_encoder('src')
+#        self.out_src, self.embed_snt_src = self.add_encoder('src')
+        self.add_encoder2()
 
         if self.config.is_inference and self.cofig.src_tst is not None:
             self.out_tgt, self.embed_snt_tgt = self.add_encoder('tgt')
@@ -361,13 +439,14 @@ class Model():
                 self.loss += self.tloss
 
             if self.config.network.ali is not None:
-                self.add_align()
+#                self.add_align()
+                self.add_align2()
                 self.loss += self.aloss
 
             self.add_train()
 
         pars = sum(variable.get_shape().num_elements() for variable in tf.trainable_variables())
-        sys.stderr.write("Total Enc/Dec parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
+        sys.stderr.write("Total Parameters: {} => {}\n".format(pars, GetHumanReadable(pars*4))) #one parameter is 4 bytes (float32)
         for var in tf.trainable_variables(): 
             pars = var.get_shape().num_elements()
             sys.stderr.write("\t{} => {} {}\n".format(pars, GetHumanReadable(pars*4), var))
@@ -389,91 +468,72 @@ class Model():
             self.div_tgt: div_tgt,
             self.lr: lr
         }
+        
+        batch_src_tokens = np.sum(len_src)
+        batch_tgt_tokens = np.sum(len_tgt)
+        sys.stderr.write('batch_src_tokens={}\nbatch_tgt_tokens={}\n'.format(batch_src_tokens, batch_tgt_tokens))
+        sys.stderr.write('len_src: {}\n'.format(len_src))
+        sys.stderr.write('len_tgt: {}\n'.format(len_tgt))
+        sys.stderr.write('src[0]: {}\n'.format(src[0]))
+        sys.stderr.write('tgt[0]: {}\n'.format(tgt[0]))
+        sys.stderr.write('wrd[0]: {}\n'.format(wrd_tgt[0]))
+        sys.stderr.write('ref[0]: {}\n'.format(ref_tgt[0]))
+        sys.stderr.write('div_src[0]: {}\n'.format(div_src[0]))
+        sys.stderr.write('div_tgt[0]: {}\n'.format(div_tgt[0]))
+        
         return feed
 
 ###################
 ### learning ######
 ###################
 
-    def run_epoch(self, train, dev, lr):
-        #######################
-        # learn on trainset ###
-        #######################
-        len_train = train.len
-        if self.config.max_sents: len_train = min(len_train, self.config.max_sents)
-        nbatches = (len_train + self.config.batch_size - 1) // self.config.batch_size
-        curr_epoch = self.config.last_epoch + 1
-        score = Score()
-        pscore = Score() ### partial score
-        ini_time = time.time()
-        tpre = time.time()
-        do_debug = False
-        for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(train):
-            fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
-            if iter%10000==0: 
-                do_debug = True
-            if do_debug:
-                do_debug = self.debug(iter, fd, src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch)
-            _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
-            score.add(loss,[],[],[])
-            pscore.add(loss,[],[],[])
-            if iter%self.config.reports == 0:
-                tnow = time.time()
-                curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) lr={:.6f} time={:.2f} sec/iter\n'.format(curr_time,curr_epoch,iter+1,nbatches,pscore.Loss,lr,(tnow-tpre)/self.config.reports))
-                tpre = tnow
-                pscore = Score()
-        curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        end_time = time.time()
-        self.config.tloss = score.Loss
-        self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,end_time-ini_time))
-        sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc_tok, train.ntgt_tok, 100.0*train.nsrc_unk/train.nsrc_tok, 100.0*train.ntgt_unk/train.ntgt_tok))
-        #keep records
-        self.config.seconds = "{:.2f}".format(end_time - ini_time)
-        self.config.last_epoch += 1
-        self.save_session(self.config.last_epoch)
-
-        ##########################
-        # evaluate over devset ###
-        ##########################
-        score = Score()
-        if dev is not None:
-            nbatches = (dev.len + self.config.batch_size - 1) // self.config.batch_size
-            ini_time = time.time()
-            for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(dev):
-                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
-                loss = self.sess.run(self.loss, feed_dict=fd)
-                score.add(loss,[],[],[])
-#                loss, out_pred, tmask = self.sess.run([self.loss,self.out_pred,self.tmask], feed_dict=fd)
-#                score.add(loss,out_pred,ref_tgt_batch,tmask)
-            curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            end_time = time.time()
-            sys.stderr.write('{} Epoch {} VALID (loss={:.6f}) time={:.2f} sec'.format(curr_time,curr_epoch,score.Loss,end_time-ini_time))
-            sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc_tok, dev.ntgt_tok, 100.0*dev.nsrc_unk/dev.nsrc_tok, 100.0*dev.ntgt_unk/dev.ntgt_tok))
-            #keep records
-            self.config.vloss = score.Loss
-
-        self.config.write_config()
-        return score.Loss, curr_epoch
-
-
     def learn(self, train, dev, n_epochs):
-        lr = self.config.opt_lr ### initial lr
-        curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write("{} Start Training\n".format(curr_time))
-        best_score = 0
-        best_epoch = 0
-        for iter in range(n_epochs):
-            score, epoch = self.run_epoch(train, dev, lr)  ### decay when score does not improve over the best
-            curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-            if iter == 0 or score <= best_score: ### keep lr value
-                best_score = score
-                best_epoch = epoch
-            elif lr >= self.config.opt_minlr: ### decay lr if score does not improve over the best score (and lr is not too low)
-                lr *= self.config.opt_decay 
-        curr_time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
-        sys.stderr.write("{} End Training\n".format(curr_time))
+        sys.stderr.write("{} Start Training\n".format(str_time()))
+        for epoch in range(n_epochs):
+            #################
+            ### run epoch ###
+            #################
+            len_train = train.len
+            if self.config.max_sents: len_train = min(len_train, self.config.max_sents)
+            nbatches = (len_train + self.config.batch_size - 1) // self.config.batch_size
+            curr_epoch = self.config.last_epoch + 1
+            score = Score()
+            for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(train):
+                fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, self.config.opt_lr)
+                self.debug(iter, fd, src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch)
+                _, loss = self.sess.run([self.train_op, self.loss], feed_dict=fd)
+                score.add_batch_loss(loss)
+#                if iter%self.config.reports == 0:
+                ploss, ptime = score.get_partial()
+                sys.stderr.write('{} Epoch {} Iteration {}/{} (loss={:.6f}) time={:.2f} sec\n'.format(str_time(),curr_epoch,iter+1,nbatches,ploss,ptime))
+                sys.exit()
+            tloss, ttime = score.get_total()
+            sys.stderr.write('{} Epoch {} TRAIN (loss={:.4f}) time={:.2f} sec'.format(str_time(),curr_epoch,tloss,ttime))
+            sys.stderr.write(' Train set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(train.nsrc_tok, train.ntgt_tok, 100.0*train.nsrc_unk/train.nsrc_tok, 100.0*train.ntgt_unk/train.ntgt_tok))
+            #keep records
+            self.config.time = time.strftime("[%Y-%m-%d_%X]", time.localtime())
+            self.config.tloss = tloss
+            self.config.seconds = "{:.2f}".format(ttime)
+            self.config.last_epoch += 1
+            self.save_session(self.config.last_epoch)
+            ##########################
+            # evaluate over devset ###
+            ##########################
+            score = Score()
+            if dev is not None:
+                nbatches = (dev.len + self.config.batch_size - 1) // self.config.batch_size
+                for iter, (src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch) in enumerate(dev):
+                    fd = self.get_feed_dict(src_batch, len_src_batch, tgt_batch, len_tgt_batch, wrd_batch, ref_batch, len_wrd_batch, div_src_batch, div_tgt_batch, lr)
+                    loss = self.sess.run(self.loss, feed_dict=fd)
+                    score.add_batch_loss(loss)
+                vloss, vtime = score.get_final()
+                sys.stderr.write('{} Epoch {} VALID (loss={:.6f}) time={:.2f} sec'.format(str_time(),curr_epoch,vloss,vtime))
+                sys.stderr.write(' Valid set: words={}/{} %oov={:.2f}/{:.2f}\n'.format(dev.nsrc_tok, dev.ntgt_tok, 100.0*dev.nsrc_unk/dev.nsrc_tok, 100.0*dev.ntgt_unk/dev.ntgt_tok))
+                #keep records
+                self.config.vloss = vloss
+            self.config.write_config()
+
+        sys.stderr.write("{} End Training\n".format(str_time()))
 
 ###################
 ### inference #####
@@ -572,8 +632,9 @@ class Model():
 #################
 
     def debug(self, it, fd, src_batch, tgt_batch, wrd_batch, ref_batch, div_src_batch, div_tgt_batch, raw_src_batch, raw_tgt_batch, len_src_batch, len_tgt_batch, len_wrd_batch):
-        if len(src_batch[0]) > 15 or len(tgt_batch[0]) > 15:
-            return True #do debug again
+        if it%10000!=0: return
+        if len(src_batch[0]) > 15 or len(tgt_batch[0]) > 15: return
+        ### do debug
         sys.stderr.write("iter={}\n".format(it))
         sys.stderr.write("B={}\n".format(len(src_batch)))
         sys.stderr.write("Ss={}\n".format(len(src_batch[0])))
@@ -581,6 +642,10 @@ class Model():
         sys.stderr.write("Vs={}\n".format(self.config.vocab_src.length))
         sys.stderr.write("Vt={}\n".format(self.config.vocab_tgt.length))
         if self.config.network.ali is not None:
+            out_src, out_tgt = self.sess.run([self.out_src, self.out_tgt], feed_dict=fd)
+            sys.stderr.write("out_src[0][0]={}".format(out_src[0][0]))
+            sys.stderr.write("out_tgt[0][0]={}".format(out_tgt[0][0]))
+            sys.exit()
             out_src, embed_snt_src, \
             out_tgt, embed_snt_tgt, \
             align_t, exp_rs_src, sum_exp_rs_src, log_sum_exp_rs_src, aggr_src, aggr_times_div_src, error_src, sum_error_src, loss_src, \
@@ -639,7 +704,7 @@ class Model():
             print0D("loss_src (mean)",loss_src)
             print0D("loss_tgt (mean)",loss_tgt)
             print0D("loss",loss)  
-            return False #do not debug again
+            return 
             #sys.exit()
 
 

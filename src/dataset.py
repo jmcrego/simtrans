@@ -209,7 +209,7 @@ class Dataset():
         self.ntgt_unk = 0
         ### every iteration i get shuffled data examples if do_shuffle
         indexs = [i for i in range(len(self.data_batch))]
-        if not self.is_inference: shuffle(indexs)
+#        if not self.is_inference: shuffle(indexs)
         for index in indexs:
             yield self.minibatch(index)
             self.nsents += len(self.data_batch[index])
