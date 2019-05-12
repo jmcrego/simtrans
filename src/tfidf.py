@@ -12,7 +12,7 @@ from tokenizer import build_tokenizer
 
 
 class Doc():
-    def __init__(self, words, file, token):
+    def __init__(self, words, file, token=None):
         self.N = 0 ### num words in document
         self.w2freq = defaultdict(int) ### frequency of words in document
 
@@ -95,8 +95,8 @@ class TfIdf():
         for i in range(len(self.TfIdf)):
             self.TfIdf[i] = np.divide(self.TfIdf[i], normD)
 
-    def compute_distances(self,words,ftst):
-        doc = Doc(words,ftst)
+    def compute_distances(self,words,ftst,token=None):
+        doc = Doc(words,ftst,token)
         ### build tst vector
         tfidf_tst = []
         norm = 0.0
@@ -126,7 +126,7 @@ class TfIdf():
     def inference(self, ftst, snt, token):
 
         if not snt:
-            self.compute_distances([],ftst)
+            self.compute_distances([],ftst,token)
             return
 
         with open(ftst) as f:
@@ -136,7 +136,7 @@ class TfIdf():
                     toks, _ = token.tokenize(str(line))
                 else: 
                     toks = line.split(' ')
-                self.compute_distances(toks,'')
+                self.compute_distances(toks,'',token)
 
     def debug(self):
         print(self.Tags)
