@@ -32,7 +32,7 @@ class Doc():
                         continue
                     self.F[w] += 1
                     self.N += 1
-        ### compute Tf (freq / N) and norm
+        ### compute Tf (freq / N) and norm of the resulting vector
         norm = 0.0
         for w,f in self.F.iteritems():
             tf = f/(1.0*self.N)
@@ -40,12 +40,12 @@ class Doc():
             norm += math.pow(tf,2.0)
         norm =  math.pow(norm, 0.5) ### 1 / norm^2
         ### normalize Tf
-        summ = 0.0
+        newnorm = 0.0
         for w,tf in self.Tf.iteritems():
             tf_norm = tf/norm
             self.Tf[w] = tf_norm
-            summ += tf_norm
-        sys.stderr.write('Read {} with {} sentences voc={} norm={} sum(tf)={}\n'.format(file,nsents,len(self.Tf),norm,summ))
+            newnorm += tf_norm
+        sys.stderr.write('Read {} with {} sentences voc={} norm={} normalized_norm(tf)={}\n'.format(file,nsents,len(self.Tf),norm,newnorm))
 
     def exists(self, w):
         return w in self.Tf
