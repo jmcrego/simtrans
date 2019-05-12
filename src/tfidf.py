@@ -66,6 +66,7 @@ class TfIdf():
             N = sum(d.exists(w) for d in Docs) ### number of documents where appears w
             if N==0: N = D
             idf = math.log(D/1.0*N)
+            sys.stderr.write('D={} N={} idf={}'.format(D,N,idf))
 #            tf = []
             tfidf = []
             for doc in Docs:
@@ -81,7 +82,7 @@ class TfIdf():
         for d in range(self.TfIdf.shape[1]):
             vdoc = self.TfIdf[:,d]
             norm_vdoc = np.linalg.norm(vdoc)
-            sys.stderr.write('Norm vdoc[{}]={}\n'.format(d,norm_vdoc))
+            sys.stderr.write('Norm vdoc[{}] ({}) = {}\n'.format(d,self.Tags[d],norm_vdoc))
             self.TfIdf[:,d] = vdoc / norm_vdoc
 
     def compute_distances(self,word2freq):
