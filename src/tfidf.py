@@ -72,7 +72,7 @@ class TfIdf():
             self.Vocab.append(w_n[0])
 
         D = len(Docs) ### number of documents
-        normD = [0.0] * D ### norm of each vector 
+        normD = np.zeros(D) ### norm of each vector 
         for w in self.Vocab:
             N = sum(d.exists(w) for d in Docs) ### number of documents where appears w
             idf = math.log(D/1.0*N)
@@ -85,7 +85,6 @@ class TfIdf():
             self.Idf.append(idf)
             sys.stderr.write('w:{} idf={} tfidf={}\n'.format(w,idf,tfidf))
 
-        normD = np.asarray(normD)
         self.TfIdf = np.asarray(self.TfIdf)
         self.Idf = np.asarray(self.Idf)
 
