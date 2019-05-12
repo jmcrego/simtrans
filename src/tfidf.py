@@ -53,7 +53,7 @@ class TfIdf():
             (file,tag) = filetag.split(':')
             self.Tags.append(tag)
             Docs.append(Doc(file,token))
-            for w,n in Docs[-1].Tf.iteritems():
+            for w,n in Docs[-1].F.iteritems():
                 Vocab2Freq[w] += n
 
         ### computes self.Vocab
