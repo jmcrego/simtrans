@@ -12,30 +12,40 @@ from tokenizer import build_tokenizer
 
 
 class Doc():
-    def __init__(self, file, token=None):
+    def __init__(self, words, file, token):
         self.N = 0 ### num words in document
-        self.F = defaultdict(int) ### term frequency 
-        nsents = 0
-        ### compute frequency of words
-        with open(file) as f:
-            for line in f:
-                nsents += 1
-                line = line.strip()
-                if token is not None: 
-                    toks, _ = token.tokenize(str(line))
-                else: 
-                    toks = line.split(' ')
-                for w in toks:
-                    if w=='': 
-                        #sys.stderr.write('warning: empty word >{}< in sentence >{}<\n'.format(w,line))
-                        continue
-                    self.F[w] += 1
-                    self.N += 1
+        self.w2freq = defaultdict(int) ### frequency of words in document
+
+        if len(words):
+            for w in words:
+                self.w2freq[w] += 1
+                self.N += 1
+            sys.stderr.write('Read {} words, voc={}\n'.format(self.N,len(self.w2freq)))
+
+        elif len(file):
+            nsents = 0
+            with open(file) as f:
+                for line in f:
+                    nsents += 1
+                    line = line.strip()
+                    if token is not None: 
+                        toks, _ = token.tokenize(str(line))
+                    else: 
+                        toks = line.split(' ')
+                    for w in toks:
+                        if w=='': continue
+                        self.w2freq[w] += 1
+                        self.N += 1
+            sys.stderr.write('Read {} with {} sentences, {} words, voc={}\n'.format(file,nsents,self.N,len(self.w2freq)))
+
         ### compute Tf (freq / N) and norm of the resulting vector
-        sys.stderr.write('Read {} with {} sentences voc={}\n'.format(file,nsents,len(self.F)))
 
     def exists(self, w):
-        return w in self.Tf
+        return w in self.w2freq
+
+    def Tf(self, w)
+        #returns 0.0 if w not in w2freq
+        return self.w2freq[w] / float(self.N)
 
 class TfIdf():
 
@@ -47,35 +57,40 @@ class TfIdf():
 #        self.Tf = [] #[V, D]
 
     def learn(self, filetags, fmod, max, token=None):
-        Vocab2Freq = defaultdict(int)
+        w2freq = defaultdict(int)
         Docs = []
         for filetag in filetags:
             (file,tag) = filetag.split(':')
             self.Tags.append(tag)
-            Docs.append(Doc(file,token))
-            for w,n in Docs[-1].F.iteritems():
-                Vocab2Freq[w] += n
+            Docs.append(Doc([],file,token))
+            for w,n in Docs[-1].w2freq.iteritems():
+                w2freq[w] += n
 
-        ### computes self.Vocab
-        for i,w_n in enumerate(sorted(Vocab2Freq.items(), key=lambda x: x[1], reverse=True)):
+        ### computes self.Vocab as the [max] most frequent of all domains
+        for i,w_n in enumerate(sorted(w2freq.items(), key=lambda x: x[1], reverse=True)):
             if max>0 and i==max: break
             self.Vocab.append(w_n[0])
 
         D = len(Docs) ### number of documents
+        normD = [0.0] * D ### norm of each vector 
         for w in self.Vocab:
             N = sum(d.exists(w) for d in Docs) ### number of documents where appears w
-            if N==0: N = D ### should never happen 
             idf = math.log(D/1.0*N)
-#            sys.stderr.write('D={} N={} idf={}\n'.format(D,N,idf))
             tfidf = []
-            for doc in Docs:
-                tf = doc.F[w]/(1.0*doc.N)
-                tfidf.append(tf * idf)
+            for d,doc in enumerate(Docs):
+                val = doc.Tf(w) * idf
+                tfidf.append(val)
+                normD[d] += math.pow(val,2.0)
             self.TfIdf.append(tfidf)
             self.Idf.append(idf)
+            sys.stderr.write('w:{} idf={} tfidf={}\n'.format(w,idf,tfidf))
 
-        self.TfIdf = np.asarray(self.TfIdf)
+        sys.stderr.write('normD1={}\n'.format(normD))
+        normD = math.pow(np.asarray(normD),0.5)
+        sys.stderr.write('normD2={}\n'.format(normD))
+        self.TfIdf = np.asarray(self.TfIdf) / normD
         self.Idf = np.asarray(self.Idf)
+        sys.exit()
         ### normalize
         for d in range(self.TfIdf.shape[1]):
             vdoc = self.TfIdf[:,d]
