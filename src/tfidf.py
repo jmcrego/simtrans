@@ -31,7 +31,7 @@ class Doc():
                     self.Tf[w] += 1
                     self.N += 1
         ### compute Tf (freq / N) and compute norm
-        norm = 0
+        norm = 0.0
         for w,f in self.Tf.iteritems():
             self.Tf[w] = f/(1.0*self.N)
             norm += math.pow(self.Tf[w],2)
