@@ -44,7 +44,8 @@ class Doc():
         for w,tf in self.Tf.iteritems():
             tf_norm = tf/norm
             self.Tf[w] = tf_norm
-            newnorm += tf_norm
+            newnorm += math.pow(tf_norm,2.0)
+        newnorm =  math.pow(newnorm, 0.5) ### 1 / norm^2
         sys.stderr.write('Read {} with {} sentences voc={} norm={} normalized_norm(tf)={}\n'.format(file,nsents,len(self.Tf),norm,newnorm))
 
     def exists(self, w):
