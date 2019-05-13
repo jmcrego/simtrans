@@ -96,14 +96,17 @@ class TfIdf():
             self.TfIdf[i] = np.divide(self.TfIdf[i], normD)
 
     def compute_distances(self,words,ftst,token=None):
+        D = len(self.Tags)
         doc = Doc(words,ftst,token)
         ### build tst tfidf vector
+        words_in_tst = []
         tfidf_tst = []
         norm = 0.0
         for i,w in enumerate(self.Vocab):
             val = doc.Tf(w) * self.Idf[i]
             tfidf_tst.append(val)
             norm += np.power(val,2.0)
+            woreds_in_tst.appen(i)
         norm = np.power(norm,0.5)
         if norm == 0.0:
             print('norm:0')
@@ -111,13 +114,22 @@ class TfIdf():
 
         tfidf_tst = np.asarray(tfidf_tst)
         tfidf_tst = np.divide(tfidf_tst, norm)
-        print('vtst: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(tfidf_tst)]))
+#        print('vtst: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(tfidf_tst)]))
 
         res = {}
-        for d,tag in enumerate(self.Tags):
-            vdoc = self.TfIdf[:,d]
-            res[tag] = np.sum(tfidf_tst * vdoc)
-            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
+        for d in range(D):
+            tag = self.Tags[d]
+            res[tag] = 0.0
+        for i in words_in_tst:
+            for d in range(D):
+                tag = self.Tags[d]
+                res[tag] += tfidf_tst[i] * self.TfIdf[i,d]
+
+#        res = {}
+#        for d,tag in enumerate(self.Tags):
+#            vdoc = self.TfIdf[:,d]
+#            res[tag] = np.sum(tfidf_tst * vdoc)
+#            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
 
         out = []
         for r in sorted(res.items(), key=lambda x: x[1], reverse=True):
