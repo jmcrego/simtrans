@@ -129,7 +129,7 @@ class TfIdf():
         for d,tag in enumerate(self.Tags):
             vdoc = self.TfIdf[:,d]
             res[tag] = np.sum(tfidf_tst * vdoc)
-            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
+#            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
 
         out = []
         for r in sorted(res.items(), key=lambda x: x[1], reverse=True):
