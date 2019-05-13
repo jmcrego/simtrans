@@ -20,7 +20,7 @@ class Doc():
             for w in words:
                 self.w2freq[w] += 1
                 self.N += 1
-            sys.stderr.write('Read {} words, voc={}\n'.format(self.N,len(self.w2freq)))
+#            sys.stderr.write('Read {} words, voc={}\n'.format(self.N,len(self.w2freq)))
 
         elif len(file):
             nsents = 0
@@ -118,12 +118,10 @@ class TfIdf():
 
         res = {}
         for d in range(D):
-            tag = self.Tags[d]
-            res[tag] = 0.0
+            res[self.Tags[d]] = 0.0
         for i in words_in_tst:
             for d in range(D):
-                tag = self.Tags[d]
-                res[tag] += tfidf_tst[i] * self.TfIdf[i,d]
+                res[self.Tags[d]] += tfidf_tst[i] * self.TfIdf[i,d]
 
 #        res = {}
 #        for d,tag in enumerate(self.Tags):
