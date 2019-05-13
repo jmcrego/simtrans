@@ -97,7 +97,7 @@ class TfIdf():
 
     def compute_distances(self,words,ftst,token=None):
         doc = Doc(words,ftst,token)
-        ### build tst vector
+        ### build tst tfidf vector
         tfidf_tst = []
         norm = 0.0
         for i,w in enumerate(self.Vocab):
@@ -111,12 +111,13 @@ class TfIdf():
 
         tfidf_tst = np.asarray(tfidf_tst)
         tfidf_tst = np.divide(tfidf_tst, norm)
+        print('vtst: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(tfidf_tst)]))
 
         res = {}
         for d,tag in enumerate(self.Tags):
             vdoc = self.TfIdf[:,d]
             res[tag] = np.sum(tfidf_tst * vdoc)
-#            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
+            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
 
         out = []
         for r in sorted(res.items(), key=lambda x: x[1], reverse=True):
