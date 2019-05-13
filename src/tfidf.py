@@ -116,20 +116,20 @@ class TfIdf():
         tfidf_tst = np.divide(tfidf_tst, norm)
 #        print('vtst: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(tfidf_tst)]))
 
-        res = {}
-        for d in range(D):
-            tag = self.Tags[d]
-            res[tag] = 0.0
-        for i in words_in_tst:
-            for d in range(D):
-                tag = self.Tags[d]
-                res[tag] += tfidf_tst[i] * self.TfIdf[i,d]
-
 #        res = {}
-#        for d,tag in enumerate(self.Tags):
-#            vdoc = self.TfIdf[:,d]
-#            res[tag] = np.sum(tfidf_tst * vdoc)
-#            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
+#        for d in range(D):
+#            tag = self.Tags[d]
+#            res[tag] = 0.0
+#        for i in words_in_tst:
+#            for d in range(D):
+#                tag = self.Tags[d]
+#                res[tag] += tfidf_tst[i] * self.TfIdf[i,d]
+
+        res = {}
+        for d,tag in enumerate(self.Tags):
+            vdoc = self.TfIdf[:,d]
+            res[tag] = np.sum(tfidf_tst * vdoc)
+            print('vdoc['+ tag +']: '+' '.join(["{}:{:.3f}".format(self.Vocab[i],e) for i,e in enumerate(vdoc)])+' => '+str(res[tag]))
 
         out = []
         for r in sorted(res.items(), key=lambda x: x[1], reverse=True):
