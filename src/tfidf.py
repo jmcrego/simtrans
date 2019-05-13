@@ -106,7 +106,7 @@ class TfIdf():
             val = doc.Tf(w) * self.Idf[i]
             tfidf_tst.append(val)
             norm += np.power(val,2.0)
-            woreds_in_tst.appen(i)
+            words_in_tst.appen(i)
         norm = np.power(norm,0.5)
         if norm == 0.0:
             print('norm:0')
