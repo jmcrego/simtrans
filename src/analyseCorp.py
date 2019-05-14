@@ -59,7 +59,7 @@ class File():
 def main():
 
     name = sys.argv.pop(0)
-    usage = '''{}  -trn FILE [-tst FILE] [-tok FILE]
+    usage = '''{}  -trn FILE [-tst FILE]* [-tok FILE]
        -tok FILE : options for tokenizer
        -trn FILE : train file
        -tst FILE : test file
@@ -67,12 +67,12 @@ def main():
 
     ftok = None
     ftrn = None
-    ftst = None
+    ftsts = []
     while len(sys.argv):
         tok = sys.argv.pop(0)
         if   (tok=="-tok" and len(sys.argv)): ftok = sys.argv.pop(0)
         elif (tok=="-trn" and len(sys.argv)): ftrn = sys.argv.pop(0)
-        elif (tok=="-tst" and len(sys.argv)): ftst = sys.argv.pop(0)
+        elif (tok=="-tst" and len(sys.argv)): ftsts.append(sys.argv.pop(0))
         elif (tok=="-h"):
             sys.stderr.write("{}".format(usage))
             sys.exit()
@@ -89,10 +89,8 @@ def main():
 
     if ftrn is not None:
         trn = File(ftrn,None,token)
-        if ftst is not None:
+        for ftst in ftsts:
             tst = File(ftst,trn,token)
-
-    sys.stderr.write('Done\n')
 
 if __name__ == "__main__":
     main()
