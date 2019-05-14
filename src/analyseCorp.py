@@ -42,7 +42,7 @@ class File():
             words_oov = 0
             sents_in_train = 0
             for w,n in self.w2freq.iteritems():
-                if w in trn.w2freq:
+                if w not in trn.w2freq:
                     voc_oov += 1
                     words_oov += n
             for s in self.sentences:
