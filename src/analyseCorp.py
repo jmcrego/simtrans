@@ -59,26 +59,20 @@ class File():
 def main():
 
     name = sys.argv.pop(0)
-    usage = '''{} -tok FILE -trn_src FILE -trn_tgt FILE -tst_src FILE -tst_tgt FILE
-       -tok     FILE : options for tokenizer
-       -trn_src FILE : train src file
-       -trn_tgt FILE : train tgt file
-       -tst_src FILE : test src file
-       -tst_tgt FILE : test tgt file
+    usage = '''{}  -trn FILE [-tst FILE] [-tok FILE]
+       -tok FILE : options for tokenizer
+       -trn FILE : train file
+       -tst FILE : test file
 '''.format(name)
 
     ftok = None
-    ftrn_src= None
-    ftrn_tgt= None
-    ftst_src= None
-    ftst_tgt= None
+    ftrn = None
+    ftst = None
     while len(sys.argv):
         tok = sys.argv.pop(0)
         if   (tok=="-tok" and len(sys.argv)): ftok = sys.argv.pop(0)
-        elif (tok=="-trn_src" and len(sys.argv)): ftrn_src = sys.argv.pop(0)
-        elif (tok=="-trn_tgt" and len(sys.argv)): ftrn_tgt = sys.argv.pop(0)
-        elif (tok=="-tst_src" and len(sys.argv)): ftst_src = sys.argv.pop(0)
-        elif (tok=="-tst_tgt" and len(sys.argv)): ftst_tgt = sys.argv.pop(0)
+        elif (tok=="-trn" and len(sys.argv)): ftrn = sys.argv.pop(0)
+        elif (tok=="-tst" and len(sys.argv)): ftst = sys.argv.pop(0)
         elif (tok=="-h"):
             sys.stderr.write("{}".format(usage))
             sys.exit()
@@ -93,15 +87,10 @@ def main():
             opts = yaml.load(yamlfile, Loader=yaml.FullLoader)
             token = build_tokenizer(opts)
 
-    if ftrn_src is not None:
-        trn_src = File(ftrn_src,None,token)
-        if ftst_src is not None:
-            tst_src = File(ftst_src,trn_src,token)
-
-    if ftrn_tgt is not None:
-        trn_tgt = File(ftrn_tgt,None,token)
-        if ftst_tgt is not None:
-            tst_tgt = File(ftst_tgt,trn_tgt,token)
+    if ftrn is not None:
+        trn = File(ftrn,None,token)
+        if ftst is not None:
+            tst = File(ftst,trn,token)
 
     sys.stderr.write('Done\n')
 
