@@ -67,7 +67,7 @@ class SuffixArray(object):
         for i in range(self.corpus_size):
             self.suffixes[i] = i
             self.lcp[i] = 0
-        sys.stderr.write(' [{} lines]\n'.format(nline))
+        sys.stderr.write('[{} lines]\n'.format(nline))
         sys.stderr.write('{} sorting...\n'.format(str_time()))
         self.sort()
         sys.stderr.write('{} computing LCP...\n'.format(str_time()))
