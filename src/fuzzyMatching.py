@@ -241,7 +241,7 @@ class SuffixArray(object):
 if __name__ == '__main__':
 
     Nbest = 10
-    minNgram = 1
+    minNgram = 2
     maxNgram = 4
     testSet = False
     name = sys.argv.pop(0)
@@ -251,7 +251,7 @@ if __name__ == '__main__':
        -tst     FILE : test file
        -tok     FILE : options for tokenizer
        -Nbest    INT : show [INT]-best similar sentences (default 10)
-       -minNgram INT : min length for test ngrams (default 1)
+       -minNgram INT : min length for test ngrams (default 2)
        -maxNgram INT : max length for test ngrams (default 4)
        -testSet      : collect similar sentences to the entire test set rather than to each input sentence (default false)
 '''.format(name)
