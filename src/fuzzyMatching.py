@@ -68,11 +68,11 @@ class SuffixArray(object):
             self.suffixes[i] = i
             self.lcp[i] = 0
         sys.stderr.write(' [{} lines]\n'.format(nline))
-        sys.stderr.write('{} sorting\n'.format(str_time()))
+        sys.stderr.write('{} sorting...\n'.format(str_time()))
         self.sort()
-        sys.stderr.write('{} computing LCP\n'.format(str_time()))
+        sys.stderr.write('{} computing LCP...\n'.format(str_time()))
         self.computeLCP()
-        sys.stderr.write('{} computing SentIds\n'.format(str_time()))
+        sys.stderr.write('{} computing SentIds...\n'.format(str_time()))
         self.computeSentIds()
 
     def sort(self):
