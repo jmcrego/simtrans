@@ -68,12 +68,12 @@ class SuffixArray(object):
             self.suffixes[i] = i
             self.lcp[i] = 0
         sys.stderr.write(' [{} lines]\n'.format(nline))
+        sys.stderr.write('{} sorting\n'.format(str_time()))
         self.sort()
-        sys.stderr.write('{} sorted\n'.format(str_time()))
+        sys.stderr.write('{} computing LCP\n'.format(str_time()))
         self.computeLCP()
-        sys.stderr.write('{}computed LCP\n'.format(str_time()))
+        sys.stderr.write('{} computing SentIds\n'.format(str_time()))
         self.computeSentIds()
-        sys.stderr.write('{}computed SentIds\n'.format(str_time()))
 
     def sort(self):
         sys.setrecursionlimit(self.corpus_size * 2)
