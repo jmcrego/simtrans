@@ -284,10 +284,10 @@ if __name__ == '__main__':
         sys.stderr.write("{}".format(usage))
         sys.exit()
 
-    sys.stderr.write('Nbest   : {}'.format(Nbest))
-    sys.stderr.write('minNgram: {}'.format(minNgram))
-    sys.stderr.write('maxNgram: {}'.format(maxNgram))
-    sys.stderr.write('testSet : {}'.format(testSet))
+    sys.stderr.write('Nbest   : {}\n'.format(Nbest))
+    sys.stderr.write('minNgram: {}\n'.format(minNgram))
+    sys.stderr.write('maxNgram: {}\n'.format(maxNgram))
+    sys.stderr.write('testSet : {}\n'.format(testSet))
 
     sys.stderr.write('{} Start\n'.format(str_time()))
     token = None
