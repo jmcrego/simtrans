@@ -262,7 +262,8 @@ class SuffixArray(object):
             if testset: test_toks.append(toks)
             else: self.query([toks], minngram, maxngram, nbest, sortByEDist, ntst)
             ntst += 1
-        self.query(test_toks, minngram, maxngram, nbest, sortByEDist, -1)
+        if testset:
+            self.query(test_toks, minngram, maxngram, nbest, sortByEDist, -1)
 
 
 if __name__ == '__main__':
