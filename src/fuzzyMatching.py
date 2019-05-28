@@ -229,17 +229,19 @@ class SuffixArray(object):
                 print('\t'.join(entry))
 
         else: ### sort by edit_distance
-            if idx_tst == 0: 
+            if idx_tst == -1: 
                 sys.stderr.write('error: -testSet cannot be used with -sortByEDist')
                 sys.exit()
 
-            sorted_edist = defaultdict(float)
-            for idx_trn in counts[:nbest*10]:
+            edist = {} #defaultdict(float)
+            mbest = nbest*10
+            sorted_counts = sorted(counts.items(), key = lambda x:x[1], reverse=True)
+            for idx_trn, ngrams_count in sorted_counts[:mbest]:
                 trn_vec_idx = self.corpus[self.sentences[idx_trn]:self.sentences[idx_trn+1]-1]
-                if idx_tst >= 0: #single sentence
-                    sm = edit_distance.SequenceMatcher(a=query_idx[0], b=trn_vec_idx)
-                    sorted_edist[idx_trn] = sm.ratio()
-                
+                sm = edit_distance.SequenceMatcher(a=query_idx[0], b=trn_vec_idx)
+                edist[idx_trn] = sm.ratio()
+
+            sorted_edist = sorted(edist.items(), key = lambda x:x[1], reverse=True)
             for idx_trn, edist in sorted_edist[:nbest]:
                 entry = []
                 entry.append("{}".format(counts[idx_trn])) ### ngrams_counts
@@ -311,10 +313,11 @@ if __name__ == '__main__':
         sys.stderr.write("{}".format(usage))
         sys.exit()
 
-    sys.stderr.write('Nbest   : {}\n'.format(Nbest))
-    sys.stderr.write('minNgram: {}\n'.format(minNgram))
-    sys.stderr.write('maxNgram: {}\n'.format(maxNgram))
-    sys.stderr.write('testSet : {}\n'.format(testSet))
+    sys.stderr.write('Nbest       : {}\n'.format(Nbest))
+    sys.stderr.write('minNgram    : {}\n'.format(minNgram))
+    sys.stderr.write('maxNgram    : {}\n'.format(maxNgram))
+    sys.stderr.write('testSet     : {}\n'.format(testSet))
+    sys.stderr.write('sortByEDist : {}\n'.format(sortByEDist))
 
     sys.stderr.write('{} Start\n'.format(str_time()))
     token = None
