@@ -199,7 +199,7 @@ class SuffixArray(object):
                         subphrase_list.append(sub_phrase)
         return subphrase_list
   
-    def query(self, ltoks, mingram, maxngram, nbest, idx_tst):
+    def query(self, ltoks, mingram, maxngram, nbest, sortByEDist, idx_tst):
         if idx_tst >= 0: #single sentence
             print("[{}]\t{}".format(idx_tst,' '.join(ltoks[0])))
 
@@ -213,37 +213,58 @@ class SuffixArray(object):
             result = self.getSentenceIds(subphrase)
             for idx_trn in result:
                 counts[idx_trn] += 1
-        sorted_counts = sorted(counts.items(), key = lambda x:x[1], reverse=True)
-        for idx_trn, ngrams_count in sorted_counts[:nbest]:
-            entry = []
-            entry.append("{}".format(ngrams_count)) ### ngrams_counts
-            trn_vec_idx = self.corpus[self.sentences[idx_trn]:self.sentences[idx_trn+1]-1]
-            if idx_tst >= 0: #single sentence
-                sm = edit_distance.SequenceMatcher(a=query_idx[0], b=trn_vec_idx)
-                entry.append("{:.4f}".format(sm.ratio())) ### edit distance
+
+        if not sortByEDist: ### sort by counts
+            sorted_counts = sorted(counts.items(), key = lambda x:x[1], reverse=True)
+            for idx_trn, ngrams_count in sorted_counts[:nbest]:
+                entry = []
+                entry.append("{}".format(ngrams_count)) ### ngrams_counts
+                trn_vec_idx = self.corpus[self.sentences[idx_trn]:self.sentences[idx_trn+1]-1]
+                if idx_tst >= 0: #single sentence
+                    sm = edit_distance.SequenceMatcher(a=query_idx[0], b=trn_vec_idx)
+                    entry.append("{:.4f}".format(sm.ratio())) ### edit distance
+                    entry.append("{}".format(idx_tst)) ### index tst
+                entry.append("{}".format(idx_trn)) ### index trn
+                entry.append(' '.join(self.convert(trn_vec_idx))) ### trn
+                print('\t'.join(entry))
+
+        else: ### sort by edit_distance
+            if idx_tst == 0: 
+                sys.stderr.write('error: -testSet cannot be used with -sortByEDist')
+                sys.exit()
+
+            sorted_edist = defaultdict(float)
+            for idx_trn in counts[:nbest*10]:
+                trn_vec_idx = self.corpus[self.sentences[idx_trn]:self.sentences[idx_trn+1]-1]
+                if idx_tst >= 0: #single sentence
+                    sm = edit_distance.SequenceMatcher(a=query_idx[0], b=trn_vec_idx)
+                    sorted_edist[idx_trn] = sm.ratio()
+                
+            for idx_trn, edist in sorted_edist[:nbest]:
+                entry = []
+                entry.append("{}".format(counts[idx_trn])) ### ngrams_counts
+                trn_vec_idx = self.corpus[self.sentences[idx_trn]:self.sentences[idx_trn+1]-1]
+                entry.append("{:.4f}".format(edist)) ### edit distance
                 entry.append("{}".format(idx_tst)) ### index tst
-            entry.append("{}".format(idx_trn)) ### index trn
-            entry.append(' '.join(self.convert(trn_vec_idx))) ### trn
-            print('\t'.join(entry))
-  
-    def queryfile(self, filename, token, minngram, maxngram, nbest, testset):
+                entry.append("{}".format(idx_trn)) ### index trn
+                entry.append(' '.join(self.convert(trn_vec_idx))) ### trn
+                print('\t'.join(entry))
+
+
+    def queryfile(self, filename, token, minngram, maxngram, nbest, sortByEDist, testset):
         ntst = 0
         test_toks = []
         for line in open(filename, 'r'):
             if token is not None: toks, _ = token.tokenize(str(line))
             else: toks = line.split()
             if testset: test_toks.append(toks)
-            else: output = self.query([toks], minngram, maxngram, nbest, ntst)
+            else: self.query([toks], minngram, maxngram, nbest, sortByEDist, ntst)
             ntst += 1
-        output = self.query(test_toks, minngram, maxngram, nbest, -1)
+        self.query(test_toks, minngram, maxngram, nbest, -1)
 
 
 if __name__ == '__main__':
 
-    Nbest = 10
-    minNgram = 2
-    maxNgram = 4
-    testSet = False
     name = sys.argv.pop(0)
     usage = '''{}  -mod FILE -trn FILE -tst FILE [-tok FILE] [-nbest INT]
        -mod     FILE : Suffix Array model file
@@ -254,13 +275,18 @@ if __name__ == '__main__':
        -minNgram INT : min length for test ngrams (default 2)
        -maxNgram INT : max length for test ngrams (default 4)
        -testSet      : collect similar sentences to the entire test set rather than to each input sentence (default false)
+       -sortByEDist  : sort collected sentences by edit distance rather than by ngram overlap counts (default false)
 '''.format(name)
 
+    Nbest = 10
+    minNgram = 2
+    maxNgram = 4
+    testSet = False
+    sortByEDist = False
     ftok = None
     fmod = None
     ftrn = None
     ftst = None
-    testSet = False
     while len(sys.argv):
         tok = sys.argv.pop(0)
         if   tok=="-tok" and len(sys.argv): ftok = sys.argv.pop(0)
@@ -271,6 +297,7 @@ if __name__ == '__main__':
         elif tok=="-minNgram" and len(sys.argv): minNgram = int(sys.argv.pop(0))
         elif tok=="-maxNgram" and len(sys.argv): maxNgram = int(sys.argv.pop(0))
         elif tok=="-testSet": testSet = True
+        elif tok=="-sortByEDist": sortByEDist = True
         elif tok=="-h":
             sys.stderr.write("{}".format(usage))
             sys.exit()
@@ -306,7 +333,7 @@ if __name__ == '__main__':
         if sa is None and fmod is not None:
             with open(fmod, 'rb') as f: sa  = pickle.load(f)
             sys.stderr.write('{} Read model from: {}\n'.format(str_time(),fmod))
-            sa.queryfile(ftst,token,minNgram,maxNgram,Nbest,testSet)        
+            sa.queryfile(ftst,token,minNgram,maxNgram,Nbest,sortByEDist,testSet)        
         
     sys.stderr.write('{} End\n'.format(str_time()))
 
