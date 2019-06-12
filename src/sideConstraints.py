@@ -6,7 +6,7 @@ import random
 import time
 import pickle
 import yaml
-from sets import Set
+#from sets import Set
 from collections import defaultdict
 
 def str_time():
@@ -16,6 +16,9 @@ def str_time():
 class Freq(object):
 
     def __init__(self, filename, fnoun, fverb, fadj):
+        Nnoun = 0
+        Nverb = 0
+        Nadj = 0
         nounFreq = defaultdict(int)
         verbFreq = defaultdict(int)
         adjFreq = defaultdict(int)
@@ -34,42 +37,39 @@ class Freq(object):
                 #prb = float(toks[3])
                 if pos.startswith('NC'):
                     nounFreq[lem] += 1
+                    Nnoun += 1
                 elif pos.startswith('VM'):
                     verbFreq[lem] += 1
+                    Nverb += 1
                 elif pos.startswith('A'):
                     adjFreq[lem] += 1
+                    Nadj += 1
             else:
                 sys.stderr.write('warning1: unparsed {} entry \'{}\'\n'.format(nsent,line))
 
         sys.stderr.write('Noun: {} words\n'.format(len(nounFreq)))
-        self.NOUN2TAG = self.split_in_sets(nounFreq, fnoun)
+        self.NOUN2TAG = self.split_in_sets(nounFreq, Nnoun, fnoun)
 
         sys.stderr.write('Verb: {} words\n'.format(len(verbFreq)))
-        self.VERB2TAG = self.split_in_sets(verbFreq, fverb)
+        self.VERB2TAG = self.split_in_sets(verbFreq, Nverb, fverb)
 
         sys.stderr.write('Adj: {} words\n'.format(len(adjFreq)))
-        self.ADJ2TAG  = self.split_in_sets(adjFreq, fadj)
+        self.ADJ2TAG  = self.split_in_sets(adjFreq, Nadj, fadj)
 
-
-    def split_in_sets(self, wordFreq, ranges):        
-        if ranges is not None: 
-            RANGES = map(int, ranges.split(':'))
-        else: 
-            RANGES = []
-
+    def split_in_sets(self, wordFreq, nwords, nsets):
+        drange = nwords / nsets
+        total_sofar = 0
         N = defaultdict(int)
         WORD2TAG = {}
-        for w,f in wordFreq.iteritems():
-            done = False
-            beg = 0
-            for end in RANGES:
-                if f>=beg and f<=end: 
-                    WORD2TAG[w] = "{}-{}".format(beg,end)
-                    N["{}-{}".format(beg,end)] += 1
-                beg = end + 1
-            if f>=beg: 
-                WORD2TAG[w] = "{}-".format(beg)
-                N["{}-".format(beg)] += 1
+        maxim = drange
+        k = ord('A')
+        for w,f in sorted(wordFreq.iteritems(),key=lambda (k,v): v): #from smaller to larger
+            if maxim < total_sofar:
+                maxim += drange
+                k += 1
+            WORD2TAG[w] = chr(k)
+            N[chr(k)] += 1
+            total_sofar += f
 
         for t,n in sorted(N.iteritems()):
             sys.stderr.write("\t{}: {}\n".format(t,n))
@@ -183,23 +183,26 @@ class Freq(object):
 if __name__ == '__main__':
 
     name = sys.argv.pop(0)
-    usage = '''{}  -i FILE -m FILE
+    usage = '''{}  -i FILE -m FILE -fnoun i[:j]* -fverb i[:j]* -fadj i[:j]*
        -i     FILE : input file with morfosyntactic analysis
        -m     FILE : model file
+       -fnoun  INT : number of noun sets (default 2)
+       -fverb  INT : number of verb sets (default 2)
+       -fadj   INT : number of adj sets (default 2)
 '''.format(name)
 
     fi = None
     fm = None
-    fnoun = None
-    fverb = None
-    fadj = None
+    fnoun = 2
+    fverb = 2
+    fadj = 2
     while len(sys.argv):
         tok = sys.argv.pop(0)
         if   tok=="-i" and len(sys.argv): fi = sys.argv.pop(0)
         elif tok=="-m" and len(sys.argv): fm = sys.argv.pop(0)
-        elif tok=="-fnoun" and len(sys.argv): fnoun = sys.argv.pop(0)
-        elif tok=="-fverb" and len(sys.argv): fverb = sys.argv.pop(0)
-        elif tok=="-fadj" and len(sys.argv): fadj = sys.argv.pop(0)
+        elif tok=="-fnoun" and len(sys.argv): fnoun = int(sys.argv.pop(0))
+        elif tok=="-fverb" and len(sys.argv): fverb = int(sys.argv.pop(0))
+        elif tok=="-fadj" and len(sys.argv): fadj = int(sys.argv.pop(0))
         elif tok=="-h":
             sys.stderr.write("{}".format(usage))
             sys.exit()
