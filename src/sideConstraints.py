@@ -6,7 +6,7 @@ import random
 import time
 import pickle
 import yaml
-#from sets import Set
+from sets import Set
 from collections import defaultdict
 
 def str_time():
