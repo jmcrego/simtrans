@@ -6,23 +6,25 @@ import random
 import time
 import pickle
 import yaml
+import numpy as np
 from sets import Set
 from collections import defaultdict
 
 def str_time():
     return time.strftime("[%Y-%m-%d_%X]", time.localtime())
 
+    
+class Model(object):
 
-class Freq(object):
-
-    def __init__(self, filename, fnoun, fverb, fadj):
+    def __init__(self, filename, setsnoun, setsverb, setsadj, frq_or_rnd):
         Nnoun = 0
         Nverb = 0
         Nadj = 0
-        nounFreq = defaultdict(int)
-        verbFreq = defaultdict(int)
-        adjFreq = defaultdict(int)
-        sys.stderr.write('{} Building Freq statistics from: {}\n'.format(str_time(),filename))
+        noun2n = defaultdict(int)
+        verb2n = defaultdict(int)
+        adj2n = defaultdict(int)
+
+        sys.stderr.write('{} Building statistics from: {}\n'.format(str_time(),filename))
         nsent = 0
         for line in open(filename, 'r'):
             line = line.rstrip()            
@@ -32,147 +34,160 @@ class Freq(object):
                 continue
             elif len(toks)>=4:
                 wrd = toks[0]
-                lem = toks[1]
                 pos = toks[2]
-                #prb = float(toks[3])
                 if pos.startswith('NC'):
-                    nounFreq[lem] += 1
+                    noun2n[wrd] += 1
                     Nnoun += 1
                 elif pos.startswith('VM'):
-                    verbFreq[lem] += 1
+                    verb2n[wrd] += 1
                     Nverb += 1
                 elif pos.startswith('A'):
-                    adjFreq[lem] += 1
+                    adj2n[wrd] += 1
                     Nadj += 1
             else:
                 sys.stderr.write('warning1: unparsed {} entry \'{}\'\n'.format(nsent,line))
 
-        sys.stderr.write('Noun: {} words\n'.format(len(nounFreq)))
-        self.NOUN2TAG = self.split_in_sets(nounFreq, Nnoun, fnoun)
+        sys.stderr.write('Noun: V={}\n'.format(len(noun2n)))
+        if frq_or_rnd: 
+            self.NOUN2TAG = self.split_in_fsets(noun2n, Nnoun, setsnoun, filename, "fnoun")
+        else: 
+            self.NOUN2TAG = self.split_in_rsets(noun2n, Nnoun, setsnoun, filename, "rnoun")
 
-        sys.stderr.write('Verb: {} words\n'.format(len(verbFreq)))
-        self.VERB2TAG = self.split_in_sets(verbFreq, Nverb, fverb)
+        sys.stderr.write('Verb: V={}\n'.format(len(verb2n)))
+        if frq_or_rnd:
+            self.VERB2TAG = self.split_in_fsets(verb2n, Nverb, setsverb, filename, "fverb")
+        else:
+            self.VERB2TAG = self.split_in_rsets(verb2n, Nverb, setsverb, filename, "rverb")
 
-        sys.stderr.write('Adj: {} words\n'.format(len(adjFreq)))
-        self.ADJ2TAG  = self.split_in_sets(adjFreq, Nadj, fadj)
+        sys.stderr.write('Adj: V={}\n'.format(len(adj2n)))
+        if frq_or_rnd:
+            self.ADJ2TAG = self.split_in_fsets(adj2n, Nadj, setsadj, filename, "fadj")
+        else:
+            self.ADJ2TAG = self.split_in_rsets(adj2n, Nadj, setsadj, filename, "radj")
 
-    def split_in_sets(self, wordFreq, nwords, nsets):
+    def split_in_fsets(self, wordDict, nwords, nsets, ofile, mytag):
         drange = nwords / nsets
         total_sofar = 0
         N = defaultdict(int)
+        M = defaultdict(int)
         WORD2TAG = {}
         maxim = drange
         k = ord('A')
-        for w,f in sorted(wordFreq.iteritems(),key=lambda (k,v): v): #from smaller to larger
+        for w,f in sorted(wordDict.iteritems(), key=lambda (k,v): v): #from smaller to larger
             if maxim < total_sofar:
                 maxim += drange
                 k += 1
             WORD2TAG[w] = chr(k)
             N[chr(k)] += 1
+            M[chr(k)] += f
             total_sofar += f
 
+        of = open(ofile+"."+mytag, "w") 
+        for w,t in sorted(WORD2TAG.iteritems(), key=lambda (k,v): v): #from smaller to larger (length)
+            f = wordDict[w]
+            of.write("{}\t{}\t{}\n".format(t,w,f))
+
         for t,n in sorted(N.iteritems()):
-            sys.stderr.write("\t{}: {}\n".format(t,n))
+            m = M[t]
+            sys.stderr.write("\t{} {}: type={} tok={}\n".format(mytag,t,n,m))
 
         return WORD2TAG
 
-    def inference(self, filename):
+
+    def split_in_rsets(self, wordDict, nwords, nsets, ofile, mytag):
+        V = np.full(shape=nsets, fill_value=0, dtype=np.int)
+        total_sofar = 0
+        N = defaultdict(int)
+        M = defaultdict(int)
+        WORD2TAG = {}
+        ord_a = ord('A')
+        for w,f in sorted(wordDict.iteritems(), key=lambda (k,v): v): #from smaller to larger (length)
+            i_min = np.argmin(V)
+            myclass = chr(ord_a+i_min)
+            WORD2TAG[w] = myclass
+            V[i_min] += f
+            N[myclass] += 1
+            M[myclass] += f
+            total_sofar += f
+
+        of = open(ofile+"."+mytag, "w") 
+        for w,t in sorted(WORD2TAG.iteritems(), key=lambda (k,v): v): #from smaller to larger (length)
+            f = wordDict[w]
+            of.write("{}\t{}\t{}\n".format(t,w,f))
+
+        for t,n in sorted(N.iteritems()):
+            m = M[t]
+            sys.stderr.write("\t{} {}: type={} tok={}\n".format(mytag,t,n,m))
+
+        return WORD2TAG
+
+    def inference(self, filename, p_any, str_any, ling):
         WRD = []
-        LEM = []
         POS = []
         nsent = 0
         for line in open(filename, 'r'):
             line = line.rstrip()
             toks = line.split()
             if len(toks)==0: ### end of sentence
-                print(' '.join(self.sideConstraints(WRD, LEM, POS)))
+                print(' '.join(self.sideConstraints(WRD, POS, p_any, str_any, ling)))
                 WRD = []
-                LEM = []
                 POS = []
                 nsent += 1
             elif len(toks)>=4:
                 WRD.append(toks[0])
-                LEM.append(toks[1])
                 POS.append(toks[2])
             else:
                 sys.stderr.write('warning2: unparsed {} entry \'{}\'\n'.format(nsent,line))
 
-    def sideConstraints(self, WRD, LEM, POS):
+    def sideConstraints(self, WRD, POS, p_any, str_any, ling):
         sideconstraints = []
-        ### length
-        sentlength = len(WRD)
-        if sentlength < 10: sideconstraints.append('<length:XS>')
-        elif sentlength >= 10 and sentlength < 20: sideconstraints.append('<length:S>')
-        elif sentlength >= 20 and sentlength < 30: sideconstraints.append('<length:M>')
-        elif sentlength >= 30 and sentlength < 40: sideconstraints.append('<length:L>')
-        elif sentlength >= 40: sideconstraints.append('<length:XL>')
-        ### frequencies
-        tag_of_nouns = Set()
-        tag_of_verbs = Set()
-        tag_of_adjs = Set()
+        ### clusters
+        set_of_nouns = Set()
+        set_of_verbs = Set()
+        set_of_adjs = Set()
+        ### pos
         mood_of_verbs = Set()
-        tens_of_verbs = Set()
-        pers_of_verbs = Set()
-        numb_of_verbs = Set()
-        type_of_det = Set()
+        tense_of_verbs = Set()
+        n_nouns = 0
+        n_verbs = 0
+        n_adjs = 0
         for i in range(len(WRD)):
             wrd = WRD[i]
-            lem = LEM[i]
             pos = POS[i]
-            tag = 'NF'
-            if pos.startswith('NC'): 
-                if lem in self.NOUN2TAG: tag = self.NOUN2TAG[lem]
-                tag_of_nouns.add(tag)
-
-            elif pos.startswith('VM'): 
-                if lem in self.VERB2TAG: tag = self.VERB2TAG[lem]
-                tag_of_verbs.add(tag)
+            if pos.startswith('NC'): ### noun common
+                n_nouns += 1
+                if wrd in self.NOUN2TAG: set_of_nouns.add(self.NOUN2TAG[wrd])
+                
+            elif pos.startswith('VM'): ### verb main
+                n_verbs += 1
+                if wrd in self.VERB2TAG: set_of_verbs.add(self.VERB2TAG[wrd])
                 mood_of_verbs.add(pos[2]) #I:indicative;   S:subjunctive;   M:imperative;   P:participle;   G:gerund;   N:infinitive
-                tens_of_verbs.add(pos[3]) #P:present;   I:imperfect;   F:future;   S:past;   C:conditional
-                pers_of_verbs.add(pos[4]) #1:1;   2:2;   3:3
-                numb_of_verbs.add(pos[5]) #S:singular;   P:plural
+                tense_of_verbs.add(pos[3]) #P:present;   I:imperfect;   F:future;   S:past;   C:conditional
 
             elif pos.startswith('A'): 
-                if lem in self.ADJ2TAG: tag = self.ADJ2TAG[lem] 
-                tag_of_adjs.add(tag)
+                n_adjs += 1
+                if wrd in self.ADJ2TAG: set_of_adjs.add(self.ADJ2TAG[wrd])
 
-            elif pos.startswith('D'):
-                type_of_det.add(pos[1]) #A:article;   D:demonstrative;   I:indefinite;   P:possessive;   T:interrogative;   E:exclamative
 
-#            sys.stderr.write("\t{} {} {} {}\n".format(wrd, lem, pos, tag))
+        if len(set_of_nouns)==1 and random.random() >= p_any: sideconstraints.append('<noun:{}>'.format(set_of_nouns.pop()))
+        else: sideconstraints.append('<noun:{}>'.format(str_any))
 
-        if len(tag_of_nouns)==1: 
-            sideconstraints.append('<fnoun:{}>'.format(tag_of_nouns.pop()))
+        if len(set_of_verbs)==1 and random.random() >= p_any: sideconstraints.append('<verb:{}>'.format(set_of_verbs.pop()))
+        else: sideconstraints.append('<verb:{}>'.format(str_any))
 
-        if len(tag_of_verbs)==1: 
-            sideconstraints.append('<fverb:{}>'.format(tag_of_verbs.pop()))
+        if len(set_of_adjs)==1 and random.random() >= p_any:  sideconstraints.append('<adj:{}>'.format(set_of_adjs.pop()))
+        else: sideconstraints.append('<adj:{}>'.format(str_any))
 
-        if len(tag_of_adjs)==1: 
-            sideconstraints.append('<fadj:{}>'.format(tag_of_adjs.pop()))
+        if ling:
+            mood = '0'
+            if len(mood_of_verbs)==1: mood = mood_of_verbs.pop()
+            if mood != '0' and random.random() > p_any: sideconstraints.append('<mood:{}>'.format(mood))
+            else: sideconstraints.append('<mood:{}>'.format(str_any))
 
-        if len(mood_of_verbs)==1: 
-            mood = mood_of_verbs.pop()
-            if mood != '0': 
-                sideconstraints.append('<vmood:{}>'.format(mood))
-
-        if len(tens_of_verbs)==1: 
-            tens = tens_of_verbs.pop()
-            if tens != '0': 
-                sideconstraints.append('<vtense:{}>'.format(tens))
-
-        if len(pers_of_verbs)==1: 
-            pers = pers_of_verbs.pop()
-            if pers != '0': 
-                sideconstraints.append('<vperson:{}>'.format(pers))
-
-        if len(numb_of_verbs)==1: 
-            numb = numb_of_verbs.pop()
-            if numb != '0': 
-                sideconstraints.append('<vnumber:{}>'.format(numb))
-
-        if len(type_of_det)==1: 
-            det = type_of_det.pop()
-            sideconstraints.append('<det:{}>'.format(det))
+            tense = '0'
+            if len(tense_of_verbs)==1: tense = tense_of_verbs.pop()
+            if tense != '0' and random.random() > p_any: sideconstraints.append('<tense:{}>'.format(tense))
+            else: sideconstraints.append('<tense:{}>'.format(str_any))
 
         return sideconstraints
 
@@ -183,26 +198,46 @@ class Freq(object):
 if __name__ == '__main__':
 
     name = sys.argv.pop(0)
-    usage = '''{}  -i FILE -m FILE -fnoun i[:j]* -fverb i[:j]* -fadj i[:j]*
-       -i     FILE : input file with morfosyntactic analysis
-       -m     FILE : model file
-       -fnoun  INT : number of noun sets (default 2)
-       -fverb  INT : number of verb sets (default 2)
-       -fadj   INT : number of adj sets (default 2)
+    usage = '''{}  -i FILE [-m FILE] [-snoun INT] [-sverb INT] [-sadj INT] [-rnd] [-p FLOAT] [-ling] [-seed INT]
+       -i       FILE : input file with morphosyntactic analysis
+
+   Learning Options
+       -snoun    INT : number of noun sets (default 2)
+       -sverb    INT : number of verb sets (default 2)
+       -sadj     INT : number of adj sets (default 2)
+       -rnd          : split words in random sets rather than frequency (default False)
+       -seed     INT : seed for randomness (default 1234)
+
+   Inference Options
+       -m       FILE : model file
+       -p_any  FLOAT : probability of generating using 'X' (any) for tags (default 0.3)
+       -s_any STRING : use 'X' for tags meaning any tag (default X)
+       -ling         : use verb mood and tense costraints (default False)
+
 '''.format(name)
 
     fi = None
     fm = None
-    fnoun = 2
-    fverb = 2
-    fadj = 2
+    snoun = 2
+    sverb = 2
+    sadj = 2
+    ling = False
+    frq_or_rnd = True
+    p_any = 0.3
+    str_any = 'X'
+    seed = 1234
     while len(sys.argv):
         tok = sys.argv.pop(0)
         if   tok=="-i" and len(sys.argv): fi = sys.argv.pop(0)
         elif tok=="-m" and len(sys.argv): fm = sys.argv.pop(0)
-        elif tok=="-fnoun" and len(sys.argv): fnoun = int(sys.argv.pop(0))
-        elif tok=="-fverb" and len(sys.argv): fverb = int(sys.argv.pop(0))
-        elif tok=="-fadj" and len(sys.argv): fadj = int(sys.argv.pop(0))
+        elif tok=="-snoun" and len(sys.argv): snoun = int(sys.argv.pop(0))
+        elif tok=="-sverb" and len(sys.argv): sverb = int(sys.argv.pop(0))
+        elif tok=="-sadj" and len(sys.argv): sadj = int(sys.argv.pop(0))
+        elif tok=="-p_any" and len(sys.argv): p_any = float(sys.argv.pop(0))
+        elif tok=="-s_any" and len(sys.argv): str_any = sys.argv.pop(0)
+        elif tok=="-seed" and len(sys.argv): seed = int(sys.argv.pop(0))
+        elif tok=="-rnd": frq_or_rnd = False
+        elif tok=="-ling": ling = True
         elif tok=="-h":
             sys.stderr.write("{}".format(usage))
             sys.exit()
@@ -218,14 +253,19 @@ if __name__ == '__main__':
 
     sys.stderr.write('{} Start\n'.format(str_time()))
 
+    random.seed(seed)
     if fm is not None:
         with open(fm, 'rb') as f: 
-            Freq  = pickle.load(f)
-            Freq.inference(fi)
+            Mod  = pickle.load(f)
+            Mod.inference(fi,p_any,str_any,ling)
     else:
-        freq = Freq(fi,fnoun,fverb,fadj)        
-        with open(fi+'.Freq', 'wb') as f: 
-            pickle.dump(freq, f)
+        Mod = Model(fi,snoun,sverb,sadj,frq_or_rnd)
+        if frq_or_rnd:
+            mod = 'Frq'
+        else:
+            mod = 'Rnd'
+        with open(fi+'.'+mod, 'wb') as f: 
+            pickle.dump(Mod, f)
 
     sys.stderr.write('{} End\n'.format(str_time()))
 
